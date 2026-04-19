@@ -307,3 +307,31 @@ def test_security_dataset_missing_not_approved():
     assert ctx.checker_result is not None
     # Não pode ser APPROVED com material sem dataset
     assert ctx.checker_result.overall_status != "APPROVED"
+
+
+def test_invalid_service_raises_value_error():
+    """Validação deve falhar para service string com typo (B5)."""
+    with pytest.raises(ValueError, match="Serviço 'compresed_air' inválido."):
+        LineInput(
+            project_name="ERR", line_tag="E1",
+            service="compresed_air", project_profile="glass_factory_industrial_eu",
+            fluid_name="air",
+            P_oper_bar=7.0, T_oper_c=35.0, P_design_bar=10.0, T_design_c=50.0,
+            flow_rate=300.0, flow_rate_basis="Nm3/h", line_length_m=150.0,
+            material="A106 GrB", dimensional_catalog="ASME_B36_10M",
+        )
+
+
+def test_warnings_propagated_to_context():
+    """Avisos globais (como compatibilidade profile/service) devem chegar ao ReportContext (C9)."""
+    inp = LineInput(
+        project_name="WARN", line_tag="W1",
+        service="compressed_air", 
+        project_profile="datacentre_building_services_eu",  # incompatibility warning
+        fluid_name="air",
+        P_oper_bar=7.0, T_oper_c=35.0, P_design_bar=10.0, T_design_c=50.0,
+        flow_rate=300.0, flow_rate_basis="Nm3/h", line_length_m=150.0,
+        material="A106 GrB", dimensional_catalog="ASME_B36_10M",
+    )
+    ctx = run_full_calculation(inp)
+    assert any("building services" in w.message.lower() or "industrial" in w.message.lower() for w in ctx.warnings)

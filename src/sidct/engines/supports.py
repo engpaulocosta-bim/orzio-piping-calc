@@ -77,7 +77,6 @@ def calculate_supports(
     # Vão máximo por deflexão admissível (viga biapoiada, carga distribuída)
     # δ_max = 5*q*L^4 / (384*E*I)  → L_max = (384*E*I*δ_max / (5*q))^(1/4)
     I_m4 = _moment_of_inertia_m4(pipe.OD_m, pipe.ID_m)
-    delta_max_m = max_deflection_mm_m / 1000.0 * inp.line_length_m  # δ = f * L
 
     if q > 0 and I_m4 > 0:
         # δ_max = max_deflection_mm_m/1000 * L_max  → substitui na equação

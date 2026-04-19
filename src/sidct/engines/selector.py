@@ -9,7 +9,8 @@ Critérios (por ordem):
 from __future__ import annotations
 import logging
 from ..models import (LineInput, FluidProperties, HydraulicResult,
-                       ThicknessResult, ExternalPressureResult, ReportContext)
+                       ThicknessResult, ExternalPressureResult, ReportContext,
+                       WarningItem)
 from ..catalogs.pipe_dimension_catalog import get_pipe_dimension, find_minimum_schedule
 from ..engines import (hydraulic_incompressible, hydraulic_compressible,
                         hydraulic_gravity, vacuum as vacuum_engine,
@@ -17,6 +18,7 @@ from ..engines import (hydraulic_incompressible, hydraulic_compressible,
 from ..config import get_profile, get_service_config
 from ..catalogs.fluid_properties import get_fluid_properties
 from ..units import m3h_to_m3s, bar_to_pa, barg_to_pa_abs
+from ..exceptions import ValidationError, DatasetMissingError, OutOfScopeError
 
 logger = logging.getLogger("sidct.selector")
 
@@ -89,7 +91,10 @@ def run_full_calculation(inp: LineInput) -> ReportContext:
                 hydraulic_result = hydraulic_gravity.select_dn(inp, fluid, catalog=catalog, schedule=sch)
                 if hydraulic_result.status not in ("OUT_OF_SCOPE", "INSUFFICIENT"):
                     break
-            except Exception:
+            except (ValidationError, DatasetMissingError, OutOfScopeError):
+                continue
+            except Exception as e:
+                logger.warning(f"Erro inesperado no motor gravitário: {e}")
                 continue
     elif inp.service in COMPRESSIBLE_SERVICES:
         v_max_gas = v_max if isinstance(v_max, float) else 15.0
@@ -101,7 +106,10 @@ def run_full_calculation(inp: LineInput) -> ReportContext:
                     catalog=catalog, schedule=sch)
                 if hydraulic_result.status not in ("OUT_OF_SCOPE",):
                     break
-            except Exception:
+            except (ValidationError, DatasetMissingError, OutOfScopeError):
+                continue
+            except Exception as e:
+                logger.warning(f"Erro inesperado no motor compressível: {e}")
                 continue
     elif inp.service in VACUUM_SERVICES:
         # Usar DN recebido ou DN mínimo
@@ -111,7 +119,10 @@ def run_full_calculation(inp: LineInput) -> ReportContext:
                 pipe_try = get_pipe_dimension(catalog, dn_try, sch)
                 hydraulic_result = vacuum_engine.calculate_vacuum(inp, fluid, pipe_try)
                 break
-            except Exception:
+            except (ValidationError, DatasetMissingError, OutOfScopeError):
+                continue
+            except Exception as e:
+                logger.warning(f"Erro inesperado no motor vácuo: {e}")
                 continue
     else:
         for sch in preferred_sch:
@@ -122,7 +133,10 @@ def run_full_calculation(inp: LineInput) -> ReportContext:
                     catalog=catalog, schedule=sch)
                 if hydraulic_result.status not in ("OUT_OF_SCOPE",):
                     break
-            except Exception:
+            except (ValidationError, DatasetMissingError, OutOfScopeError):
+                continue
+            except Exception as e:
+                logger.warning(f"Erro inesperado no motor incompressível: {e}")
                 continue
 
     if hydraulic_result is None:
@@ -140,7 +154,10 @@ def run_full_calculation(inp: LineInput) -> ReportContext:
     ext_result: ExternalPressureResult | None = None
 
     try:
-        pipe_for_thickness = get_pipe_dimension(catalog, DN_final, preferred_sch[0])
+        if hydraulic_result and hydraulic_result.pipe_used:
+            pipe_for_thickness = hydraulic_result.pipe_used
+        else:
+            pipe_for_thickness = get_pipe_dimension(catalog, DN_final, preferred_sch[0])
         thickness_result = thickness_internal.calculate_thickness(
             inp, pipe_for_thickness, profile=profile
         )
@@ -213,6 +230,11 @@ def run_full_calculation(inp: LineInput) -> ReportContext:
         description="K-values for fittings and valves",
     ))
 
+    warn_items = [
+        WarningItem(code="W000", severity="WARNING", message=w, module="selector")
+        for w in warnings_global
+    ]
+
     return ReportContext(
         project_name=inp.project_name,
         line_tag=inp.line_tag,
@@ -225,7 +247,7 @@ def run_full_calculation(inp: LineInput) -> ReportContext:
         support_result=support_result,
         checker_result=checker_result,
         citations=citations,
-        warnings=[],
+        warnings=warn_items,
         assumptions_declared=assumptions,
         profile_used=profile,
     )

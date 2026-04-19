@@ -18,6 +18,7 @@ from ..catalogs.fitting_k_catalog import calculate_total_k
 from ..units import m3h_to_m3s, ls_to_m3s, gpm_to_m3s, bar_to_pa, pa_to_bar, G_GRAVITY
 from ..exceptions import (OutOfScopeError, WrongEngineError, ConvergenceError,
                            ValidationError)
+from .colebrook import colebrook_white as _colebrook_white
 
 logger = logging.getLogger("sidct.hydraulic_incompressible")
 
@@ -27,27 +28,6 @@ VALID_SERVICES = {
 }
 GRAVITY_SERVICES = {"sanitary_drainage", "rainwater"}
 COMPRESSIBLE_SERVICES = {"compressed_air", "natural_gas"}
-
-_MAX_ITER = 200
-_TOL = 1e-8
-
-
-def _colebrook_white(Re: float, eps_D: float) -> float:
-    """Resolve Colebrook-White para f (factor Darcy). Iteração Newton-Raphson."""
-    if Re < 2300:
-        return 64.0 / Re  # Hagen-Poiseuille
-
-    # Estimativa inicial Swamee-Jain
-    f = 0.25 / (math.log10(eps_D / 3.7 + 5.74 / Re**0.9))**2
-
-    for _ in range(_MAX_ITER):
-        lhs = -2.0 * math.log10(eps_D / 3.7 + 2.51 / (Re * math.sqrt(f)))
-        f_new = (1.0 / lhs)**2
-        if abs(f_new - f) < _TOL:
-            return f_new
-        f = f_new
-
-    raise ConvergenceError("Colebrook-White", _MAX_ITER, _TOL)
 
 
 def _flow_rate_m3s(flow_rate: float, basis: str) -> float:
@@ -119,12 +99,14 @@ def calculate_for_pipe(
         warnings.append(f"Re = {Re:.2e} — fora do envelope validado (Re > 1e8)")
 
     # Verificação de incompressibilidade (ΔP/P < 10%)
-    dp_pct = (dp_total_pa / (bar_to_pa(inp.P_oper_bar))) * 100.0
-    if dp_pct > 10.0:
-        warnings.append(
-            f"ΔP/P = {dp_pct:.1f}% > 10% — confirmar que fluido é incompressível e "
-            f"pressão dinâmica é desprezável"
-        )
+    P_oper_pa = bar_to_pa(inp.P_oper_bar)
+    if P_oper_pa > 0:
+        dp_pct = (dp_total_pa / P_oper_pa) * 100.0
+        if dp_pct > 10.0:
+            warnings.append(
+                f"ΔP/P = {dp_pct:.1f}% > 10% — confirmar que fluido é incompressível e "
+                f"pressão dinâmica é desprezável"
+            )
 
     return HydraulicResult(
         regime="pressurized_incompressible",

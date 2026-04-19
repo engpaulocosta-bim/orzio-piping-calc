@@ -1,11 +1,13 @@
 """Configuração global do sistema SIDCT."""
 from __future__ import annotations
+import functools
 import yaml
 from pathlib import Path
 
 _ROOT = Path(__file__).parent.parent.parent  # repo root
 
 
+@functools.lru_cache(maxsize=16)
 def _load_yaml(name: str) -> dict:
     path = _ROOT / name
     if not path.exists():

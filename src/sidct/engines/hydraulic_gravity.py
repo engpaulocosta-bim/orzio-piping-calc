@@ -103,6 +103,8 @@ def _partial_flow_depth(Q_m3s: float, D_m: float, slope: float, n: float,
         theta_sol = (lo + hi) / 2.0
 
     y = R * (1.0 - math.cos(theta_sol / 2.0))
+    # Clampar y ao intervalo [0, D_m] para evitar y/D > 1.0 em casos limite
+    y = max(0.0, min(y, D_m))
     return y
 
 

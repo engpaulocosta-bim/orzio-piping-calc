@@ -19,6 +19,7 @@ from ..catalogs.fitting_k_catalog import calculate_total_k
 from ..units import (nm3h_to_m3s_at_tp, sm3h_to_m3s_at_tp, m3h_to_m3s,
                      barg_to_pa_abs, pa_to_bar, R_UNIVERSAL, P_ATM_PA)
 from ..exceptions import OutOfScopeError, WrongEngineError, ValidationError
+from .colebrook import colebrook_white as _colebrook_white
 
 logger = logging.getLogger("sidct.hydraulic_compressible")
 
@@ -42,19 +43,6 @@ def _mass_flow_kgs(flow_rate: float, basis: str, fluid: FluidProperties) -> floa
         m3s = m3h_to_m3s(flow_rate)
         return m3s * fluid.rho_kgm3
     raise ValidationError(f"Unidade de caudal '{basis}' não suportada para gases", "flow_rate_basis")
-
-
-def _colebrook_white(Re: float, eps_D: float) -> float:
-    if Re < 2300:
-        return 64.0 / Re
-    f = 0.25 / (math.log10(eps_D / 3.7 + 5.74 / Re**0.9))**2
-    for _ in range(200):
-        lhs = -2.0 * math.log10(eps_D / 3.7 + 2.51 / (Re * math.sqrt(f)))
-        f_new = (1.0 / lhs)**2
-        if abs(f_new - f) < 1e-8:
-            return f_new
-        f = f_new
-    return f
 
 
 def calculate_compressible(

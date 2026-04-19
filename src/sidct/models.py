@@ -75,7 +75,24 @@ class LineInput(BaseModel):
 
     @model_validator(mode="after")
     def check_regime_requirements(self) -> "LineInput":
-        from .enums import Service
+        from .enums import Service, ProjectProfile
+
+        # Validar service contra enum (B5)
+        valid_services = {e.value for e in Service}
+        if self.service not in valid_services:
+            raise ValueError(
+                f"Serviço '{self.service}' inválido. "
+                f"Serviços suportados: {sorted(valid_services)}"
+            )
+
+        # Validar project_profile contra enum (B5)
+        valid_profiles = {e.value for e in ProjectProfile}
+        if self.project_profile not in valid_profiles:
+            raise ValueError(
+                f"Perfil '{self.project_profile}' inválido. "
+                f"Perfis suportados: {sorted(valid_profiles)}"
+            )
+
         svc = self.service
         if svc in (Service.SANITARY_DRAINAGE, Service.RAINWATER):
             if self.slope_mm_m is None:

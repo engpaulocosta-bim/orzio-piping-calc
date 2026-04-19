@@ -433,7 +433,7 @@ elif mode == "Batch CSV":
                 st.error(f"Erro no batch: {e}")
 
     # Template download
-    template_path = _SRC.parent / "data" / "templates" / "batch_template.csv"
+    template_path = _SRC / "data" / "templates" / "batch_template.csv"
     if template_path.exists():
         st.download_button(
             "⬇️ Descarregar Template Batch",

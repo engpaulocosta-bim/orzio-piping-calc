@@ -93,12 +93,20 @@ def m3s_to_gpm(m3s: float) -> float:
 def nm3h_to_m3s_at_tp(nm3h: float, T_K: float, P_pa: float,
                        T_n_K: float = 273.15, P_n_pa: float = 101325.0) -> float:
     """Converte Nm³/h (0°C, 1 atm) para m³/s às condições (T_K, P_pa)."""
+    if P_pa <= 0:
+        raise ValueError(f"P_pa deve ser > 0 para conversão Nm³/h, recebido {P_pa}")
+    if T_K <= 0:
+        raise ValueError(f"T_K deve ser > 0 para conversão Nm³/h, recebido {T_K}")
     m3s_normal = nm3h / 3600.0
     return m3s_normal * (T_K / T_n_K) * (P_n_pa / P_pa)
 
 def sm3h_to_m3s_at_tp(sm3h: float, T_K: float, P_pa: float,
                        T_s_K: float = 288.15, P_s_pa: float = 101325.0) -> float:
     """Converte Sm³/h (15°C, 1 atm) para m³/s às condições (T_K, P_pa)."""
+    if P_pa <= 0:
+        raise ValueError(f"P_pa deve ser > 0 para conversão Sm³/h, recebido {P_pa}")
+    if T_K <= 0:
+        raise ValueError(f"T_K deve ser > 0 para conversão Sm³/h, recebido {T_K}")
     m3s_standard = sm3h / 3600.0
     return m3s_standard * (T_K / T_s_K) * (P_s_pa / P_pa)
 

@@ -1,0 +1,6 @@
+project_name,line_tag,service,project_profile,jurisdiction,fluid_name,P_oper_bar,T_oper_c,P_design_bar,T_design_c,flow_rate,flow_rate_basis,line_length_m,elevation_delta_m,material,dimensional_catalog,design_code,corrosion_allowance_mm,insulation_thickness_mm,insulation_density_kgm3,n_90lr_elbows,allowable_pressure_drop_bar,DN_received_mm,schedule_or_wall_received,slope_mm_m,vacuum_target_mbara,operation_mode,design_notes
+PROJ-001,L-001,compressed_air,glass_factory_industrial_eu,EU,Ar comprimido,7.0,35,10.0,50,300,Nm3/h,150,0,A106 GrB,ASME_B36_10M,,1.0,50,100,4,0.5,,,,,calculate_new,Ar comprimido industrial
+PROJ-001,L-002,service_water,industrial_utilities_eu,EU,Água de serviço,10.0,20,16.0,40,50,L/s,80,0,A106 GrB,ASME_B36_10M,,1.5,0,100,2,0.5,,,,,calculate_new,Água serviço industrial
+PROJ-001,L-003,chilled_water,datacentre_building_services_eu,EU,Chilled water,6.0,7,10.0,20,100,m3/h,120,0,A106 GrB,ASME_B36_10M,ASME_B31_9,1.5,50,80,3,0.3,,,,,calculate_new,Chilled water data centre
+PROJ-001,L-004,vacuum_utility,industrial_utilities_eu,EU,Vácuo,0.0,25,0.1,40,10,m3/h,30,0,A106 GrB,ASME_B36_10M,,1.0,0,100,0,,,,,10.0,calculate_new,Vácuo utilitário
+PROJ-001,L-005,sanitary_drainage,datacentre_building_services_eu,EU,Esgoto,0.0,20,0.0,30,5,L/s,50,0,pvc,ASME_B36_10M,,,0,100,0,,,,10.0,,calculate_new,Drenagem sanitária

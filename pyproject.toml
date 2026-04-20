@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sidct"
+version = "1.0.0"
+description = "Sistema Integrado de Dimensionamento de Tubagens Industriais e Data Centre"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "pydantic>=2.5.0",
+    "pyyaml>=6.0.1",
+    "coolprop>=6.6.0",
+    "numpy>=1.26.0",
+    "scipy>=1.11.0",
+    "reportlab>=4.0.0",
+    "streamlit>=1.30.0",
+    "plotly>=5.18.0",
+    "pandas>=2.1.0",
+    "openpyxl>=3.1.2",
+    "structlog>=24.1.0"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -5,8 +5,9 @@ import io
 from pathlib import Path
 
 # Adicionar src ao path
-_SRC = Path(__file__).parent.parent.parent.parent
-sys.path.insert(0, str(_SRC))
+_SRC = Path(__file__).resolve().parent.parent.parent
+if str(_SRC) not in sys.path:
+    sys.path.insert(0, str(_SRC))
 
 import streamlit as st
 

@@ -74,6 +74,26 @@ def validate_line_input(inp: LineInput) -> list[str]:
             f"Material '{inp.material}' identificado como inox — deve usar B36.19M"
         )
 
+    from .materials import validate_material_application
+    from .system_pipe_mapping import validate_system_material_selection
+    warnings.extend(
+        validate_system_material_selection(
+            inp.service,
+            inp.material,
+            inp.jurisdiction,
+            require_calculation_ready=True,
+        )
+    )
+    warnings.extend(
+        validate_material_application(
+            inp.material,
+            inp.service,
+            inp.T_design_c,
+            inp.P_design_bar,
+            inp.jurisdiction,
+        )
+    )
+
     # Corrosion allowance
     if inp.corrosion_allowance_mm is not None and inp.corrosion_allowance_mm < 0:
         raise ValidationError("corrosion_allowance_mm deve ser >= 0", "corrosion_allowance_mm")

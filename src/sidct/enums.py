@@ -49,6 +49,8 @@ class DimensionalCatalog(str, Enum):
     ASME_B36_10M = "ASME_B36_10M"
     ASME_B36_19M = "ASME_B36_19M"
     NBR_5580 = "NBR_5580"
+    PVC_EN1452 = "PVC_EN1452"
+    PVC_ASTMD1785 = "PVC_ASTMD1785"
 
 
 class MaterialFamily(str, Enum):

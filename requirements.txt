@@ -12,6 +12,7 @@ reportlab>=4.0.0
 # UI
 streamlit>=1.30.0
 plotly>=5.18.0
+PySide6>=6.7.0
 
 # Data
 pandas>=2.1.0
@@ -27,3 +28,4 @@ pytest-timeout>=2.2.0
 
 # Dev
 python-dotenv>=1.0.0
+pyinstaller>=6.0.0

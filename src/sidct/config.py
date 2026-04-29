@@ -1,10 +1,11 @@
 """Configuração global do sistema SIDCT."""
 from __future__ import annotations
 import functools
+import sys
 import yaml
 from pathlib import Path
 
-_ROOT = Path(__file__).parent.parent.parent  # repo root
+_ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).parent.parent.parent))  # repo root or PyInstaller bundle
 
 
 @functools.lru_cache(maxsize=16)

@@ -74,6 +74,10 @@ def calculate_supports(
     # Carga distribuída [N/m]
     q = w_total * G_GRAVITY
 
+    if inp.material.lower().replace(" ", "").replace("-", "") in ("pvc", "pvcu", "pvcu_eu", "pvcu_us"):
+        E_steel_pa = 3.0e9
+        warnings.append("PVC support span uses preliminary PVC modulus E = 3.0 GPa.")
+
     # Vão máximo por deflexão admissível (viga biapoiada, carga distribuída)
     # δ_max = 5*q*L^4 / (384*E*I)  → L_max = (384*E*I*δ_max / (5*q))^(1/4)
     I_m4 = _moment_of_inertia_m4(pipe.OD_m, pipe.ID_m)

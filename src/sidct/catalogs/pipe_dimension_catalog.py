@@ -118,15 +118,87 @@ B36_19M_WALLS: dict[float, dict[str, float]] = {
 
 # ─── Densidade do aço (para cálculo de peso) ────────────────────────────────────
 STEEL_DENSITY_KGM3 = 7850.0
+PVC_DENSITY_KGM3 = 1400.0
 
 
 def _pipe_weight_kgm(OD_mm: float, wt_mm: float) -> float:
     """Peso por metro de tubo de aço [kg/m]."""
+    return _pipe_weight_for_density_kgm(OD_mm, wt_mm, STEEL_DENSITY_KGM3)
+
+
+def _pipe_weight_for_density_kgm(OD_mm: float, wt_mm: float, density_kgm3: float) -> float:
+    """Peso por metro de tubo [kg/m] para uma densidade de material."""
     import math
     OD_m = OD_mm / 1000.0
     ID_m = (OD_mm - 2 * wt_mm) / 1000.0
     area_m2 = math.pi / 4.0 * (OD_m**2 - ID_m**2)
-    return area_m2 * STEEL_DENSITY_KGM3
+    return area_m2 * density_kgm3
+
+
+PVC_EN1452_OD: dict[float, float] = {
+    15: 20.0, 20: 25.0, 25: 32.0, 32: 40.0, 40: 50.0, 50: 63.0,
+    65: 75.0, 80: 90.0, 100: 110.0, 125: 140.0, 150: 160.0,
+    200: 200.0, 250: 250.0, 300: 315.0,
+}
+
+PVC_EN1452_NPS: dict[float, float] = {dn: od / 25.4 for dn, od in PVC_EN1452_OD.items()}
+
+PVC_EN1452_WALLS: dict[float, dict[str, float]] = {
+    15: {"PN10": 1.5, "PN16": 1.9},
+    20: {"PN10": 1.9, "PN16": 2.3},
+    25: {"PN10": 2.4, "PN16": 3.0},
+    32: {"PN10": 3.0, "PN16": 3.7},
+    40: {"PN10": 3.7, "PN16": 4.6},
+    50: {"PN10": 4.7, "PN16": 5.8},
+    65: {"PN10": 5.6, "PN16": 6.8},
+    80: {"PN10": 6.7, "PN16": 8.2},
+    100: {"PN10": 6.6, "PN16": 10.0},
+    125: {"PN10": 8.3, "PN16": 12.7},
+    150: {"PN10": 9.5, "PN16": 14.6},
+    200: {"PN10": 11.9, "PN16": 18.2},
+    250: {"PN10": 14.8, "PN16": 22.7},
+    300: {"PN10": 18.7, "PN16": 28.6},
+}
+
+PVC_ASTMD1785_OD: dict[float, float] = {
+    15: 21.34, 20: 26.67, 25: 33.40, 32: 42.16, 40: 48.26, 50: 60.33,
+    65: 73.03, 80: 88.90, 100: 114.30, 150: 168.28, 200: 219.08,
+    250: 273.05, 300: 323.85,
+}
+
+PVC_ASTMD1785_NPS: dict[float, float] = {
+    15: 0.5, 20: 0.75, 25: 1.0, 32: 1.25, 40: 1.5, 50: 2.0, 65: 2.5,
+    80: 3.0, 100: 4.0, 150: 6.0, 200: 8.0, 250: 10.0, 300: 12.0,
+}
+
+PVC_ASTMD1785_WALLS: dict[float, dict[str, float]] = {
+    15: {"SCH40": 2.77, "SCH80": 3.73},
+    20: {"SCH40": 2.87, "SCH80": 3.91},
+    25: {"SCH40": 3.38, "SCH80": 4.55},
+    32: {"SCH40": 3.56, "SCH80": 4.85},
+    40: {"SCH40": 3.68, "SCH80": 5.08},
+    50: {"SCH40": 3.91, "SCH80": 5.54},
+    65: {"SCH40": 5.16, "SCH80": 7.01},
+    80: {"SCH40": 5.49, "SCH80": 7.62},
+    100: {"SCH40": 6.02, "SCH80": 8.56},
+    150: {"SCH40": 7.11, "SCH80": 10.97},
+    200: {"SCH40": 8.18, "SCH80": 12.70},
+    250: {"SCH40": 9.27, "SCH80": 15.09},
+    300: {"SCH40": 10.31, "SCH80": 17.48},
+}
+
+
+def _catalog_maps(catalog: str) -> tuple[dict[float, dict[str, float]], dict[float, float], dict[float, float], str, float]:
+    catalog_upper = catalog.upper().replace(".", "").replace("-", "").replace("_", "")
+    if catalog_upper in ("ASMEB3610M", "B3610M", "B36_10M"):
+        return B36_10M_WALLS, B36_10M_OD, B36_10M_NPS, "ASME_B36_10M", STEEL_DENSITY_KGM3
+    if catalog_upper in ("ASMEB3619M", "B3619M", "B36_19M"):
+        return B36_19M_WALLS, B36_19M_OD, B36_10M_NPS, "ASME_B36_19M", STEEL_DENSITY_KGM3
+    if catalog_upper in ("PVCEN1452", "EN1452", "PVCUEN1452"):
+        return PVC_EN1452_WALLS, PVC_EN1452_OD, PVC_EN1452_NPS, "PVC_EN1452", PVC_DENSITY_KGM3
+    if catalog_upper in ("PVCASTMD1785", "ASTMD1785", "PVCD1785"):
+        return PVC_ASTMD1785_WALLS, PVC_ASTMD1785_OD, PVC_ASTMD1785_NPS, "PVC_ASTMD1785", PVC_DENSITY_KGM3
+    raise DatasetMissingError(catalog, "Catalog not supported in this version")
 
 
 def get_pipe_dimension(
@@ -136,20 +208,7 @@ def get_pipe_dimension(
 ) -> PipeDimension:
     """Retorna dimensões do tubo para o catálogo, DN e schedule especificados."""
     schedule_upper = schedule.upper().replace(" ", "").replace("-", "")
-    catalog_upper = catalog.upper().replace(".", "").replace("-", "").replace("_", "")
-
-    if catalog_upper in ("ASMEB3610M", "B3610M", "B36_10M"):
-        walls = B36_10M_WALLS
-        od_map = B36_10M_OD
-        nps_map = B36_10M_NPS
-        cat_name = "ASME_B36_10M"
-    elif catalog_upper in ("ASMEB3619M", "B3619M", "B36_19M"):
-        walls = B36_19M_WALLS
-        od_map = B36_19M_OD
-        nps_map = B36_10M_NPS
-        cat_name = "ASME_B36_19M"
-    else:
-        raise DatasetMissingError(catalog, "Catálogo não suportado nesta versão")
+    walls, od_map, nps_map, cat_name, density = _catalog_maps(catalog)
 
     if DN_mm not in od_map:
         available = sorted(od_map.keys())
@@ -175,7 +234,7 @@ def get_pipe_dimension(
     wt_mm = sch_map[schedule_upper]
     ID_mm = OD_mm - 2.0 * wt_mm
     nps = nps_map.get(DN_mm, DN_mm / 25.4)
-    weight = _pipe_weight_kgm(OD_mm, wt_mm)
+    weight = _pipe_weight_for_density_kgm(OD_mm, wt_mm, density)
 
     return PipeDimension(
         catalog=cat_name,
@@ -190,22 +249,19 @@ def get_pipe_dimension(
 
 
 def get_available_schedules(catalog: str, DN_mm: float) -> list[str]:
-    cat_upper = catalog.upper().replace(".", "").replace("-", "").replace("_", "")
-    if cat_upper in ("ASMEB3610M", "B3610M", "B36_10M"):
-        walls = B36_10M_WALLS
-    elif cat_upper in ("ASMEB3619M", "B3619M", "B36_19M"):
-        walls = B36_19M_WALLS
-    else:
+    try:
+        walls, _, _, _, _ = _catalog_maps(catalog)
+    except DatasetMissingError:
         return []
     return list(walls.get(DN_mm, {}).keys())
 
 
 def get_available_dns(catalog: str) -> list[float]:
-    cat_upper = catalog.upper().replace(".", "").replace("-", "").replace("_", "")
-    if cat_upper in ("ASMEB3610M", "B3610M", "B36_10M"):
-        return sorted(B36_10M_OD.keys())
-    elif cat_upper in ("ASMEB3619M", "B3619M", "B36_19M"):
-        return sorted(B36_19M_OD.keys())
+    try:
+        _, od_map, _, _, _ = _catalog_maps(catalog)
+        return sorted(od_map.keys())
+    except DatasetMissingError:
+        pass
     return []
 
 
@@ -215,18 +271,9 @@ def find_minimum_schedule(
     min_wall_mm: float,
 ) -> Optional[PipeDimension]:
     """Encontra o schedule mais leve que satisfaz a espessura mínima requerida."""
-    cat_upper = catalog.upper().replace(".", "").replace("-", "").replace("_", "")
-    if cat_upper in ("ASMEB3610M", "B3610M", "B36_10M"):
-        walls_db = B36_10M_WALLS
-        od_map = B36_10M_OD
-        nps_map = B36_10M_NPS
-        cat_name = "ASME_B36_10M"
-    elif cat_upper in ("ASMEB3619M", "B3619M", "B36_19M"):
-        walls_db = B36_19M_WALLS
-        od_map = B36_19M_OD
-        nps_map = B36_10M_NPS
-        cat_name = "ASME_B36_19M"
-    else:
+    try:
+        walls_db, od_map, nps_map, cat_name, density = _catalog_maps(catalog)
+    except DatasetMissingError:
         return None
 
     if DN_mm not in walls_db:
@@ -241,7 +288,7 @@ def find_minimum_schedule(
         if wt_mm >= min_wall_mm:
             ID_mm = OD_mm - 2.0 * wt_mm
             nps = nps_map.get(DN_mm, DN_mm / 25.4)
-            weight = _pipe_weight_kgm(OD_mm, wt_mm)
+            weight = _pipe_weight_for_density_kgm(OD_mm, wt_mm, density)
             return PipeDimension(
                 catalog=cat_name,
                 DN_mm=DN_mm,

@@ -1,0 +1,304 @@
+# SERVICE MATRIX — SIDCT v1.0
+# Define regime, código, catálogo, critérios e limitações por serviço.
+
+services:
+
+  compressed_air:
+    description: "Ar comprimido — utility industrial e data centre"
+    regime: compressible_gas
+    typical_use_case: "Rede de ar comprimido industrial, ferramentas pneumáticas, controlo de instrumentação"
+    default_profile_tags: [glass_factory_industrial_eu, glass_factory_industrial_us, industrial_utilities_eu]
+    primary_design_code_candidates: [ASME_B31_3, EN_13480]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      note: "Velocidade depende do perfil. Valores típicos 5-15 m/s em distribuição."
+      typical_max_ms: 15.0
+      typical_min_ms: 3.0
+    pressure_drop_criteria:
+      note: "Perda admissível típica: 0.1 bar/100m em distribuição."
+      typical_bar_per_100m: 0.1
+    compressibility_required: true
+    gravity_required: false
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "carbon_steel_gas"
+    required_inputs:
+      - P_oper
+      - T_oper
+      - P_design
+      - T_design
+      - flow_rate
+      - material
+      - dimensional_catalog
+    checker_rules:
+      - "Verificar Mach < 0.3"
+      - "Verificar pressure ratio > 0.5"
+      - "Verificar velocidade dentro dos limites do perfil"
+    known_limitations:
+      - "Modelo isotérmico: conservativo para gases frios"
+      - "Mistura de gases não suportada"
+    report_disclaimer_template: >
+      Cálculo de ar comprimido por modelo compressível isotérmico.
+      Verificar que Ma < 0.3 e ΔP/P < 50% para validade do modelo.
+
+  natural_gas:
+    description: "Gás natural — distribuição industrial"
+    regime: compressible_gas
+    typical_use_case: "Rede de gás natural para fornos industriais, queimadores, utilities"
+    default_profile_tags: [glass_factory_industrial_eu, glass_factory_industrial_us, industrial_utilities_eu]
+    primary_design_code_candidates: [ASME_B31_3, EN_13480]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      typical_max_ms: 20.0
+      typical_min_ms: 3.0
+      note: "Verificar critérios locais de distribuição de gás"
+    pressure_drop_criteria:
+      typical_bar_per_100m: 0.05
+    compressibility_required: true
+    gravity_required: false
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "carbon_steel_gas"
+    required_inputs:
+      - P_oper
+      - T_oper
+      - P_design
+      - T_design
+      - flow_rate
+      - material
+    checker_rules:
+      - "Verificar Mach < 0.3"
+      - "Verificar pressure ratio > 0.5"
+      - "Gás natural: composição deve ser fornecida ou usar aproximação CH4 com warning"
+    known_limitations:
+      - "Sem composição: modelado como CH4 puro (warning emitido)"
+      - "Correlações de gas gravity não implementadas nesta versão"
+    report_disclaimer_template: >
+      Gás natural modelado como CH4 puro quando composição não fornecida.
+      Para gas com alto conteúdo de C2+ ou inerte: fornecer propriedades reais.
+
+  potable_water:
+    description: "Água potável — uso doméstico e industrial"
+    regime: pressurized_incompressible
+    typical_use_case: "Rede de água potável, sanitários, consumo humano"
+    default_profile_tags: [datacentre_building_services_eu, datacentre_building_services_us, industrial_utilities_eu]
+    primary_design_code_candidates: [ASME_B31_9, ASME_B31_3, EN_13480]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      max_cold_ms: 2.0
+      max_hot_ms: 1.5
+      min_ms: 0.3
+    pressure_drop_criteria:
+      typical_bar_per_100m: 0.15
+    compressibility_required: false
+    gravity_required: false
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "carbon_steel_water"
+    checker_rules:
+      - "Verificar velocidade máxima para evitar ruído e erosão"
+      - "Pressão mínima residual no ponto de consumo"
+    known_limitations:
+      - "Propriedades de água potável: água limpa a T_oper (sem sais dissolvidos)"
+    report_disclaimer_template: >
+      Água potável calculada com propriedades de água limpa.
+      Para água com dureza elevada ou tratamentos especiais: consultar especialista.
+
+  service_water:
+    description: "Água de serviço — limpeza, arrefecimento, processos auxiliares"
+    regime: pressurized_incompressible
+    typical_use_case: "Rede de serviço, limpeza de equipamentos, arrefecimento de superfícies"
+    default_profile_tags: [glass_factory_industrial_eu, industrial_utilities_eu, industrial_utilities_brazil]
+    primary_design_code_candidates: [ASME_B31_3, EN_13480]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      max_ms: 3.0
+      min_ms: 0.5
+    pressure_drop_criteria:
+      typical_bar_per_100m: 0.30
+    compressibility_required: false
+    gravity_required: false
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "carbon_steel_water"
+    checker_rules:
+      - "Verificar velocidade dentro dos limites do perfil"
+    known_limitations:
+      - "Propriedades: água limpa. Água de processo com contaminantes não modelada."
+
+  osmotized_water:
+    description: "Água osmotizada / tratada — processos sensíveis à pureza"
+    regime: pressurized_incompressible
+    typical_use_case: "Sistemas de arrefecimento fechados, boilers, processos com restrição de iões"
+    default_profile_tags: [glass_factory_industrial_eu, industrial_utilities_eu]
+    primary_design_code_candidates: [ASME_B31_3, EN_13480]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      max_ms: 3.0
+      min_ms: 0.3
+    pressure_drop_criteria:
+      typical_bar_per_100m: 0.20
+    compressibility_required: false
+    gravity_required: false
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "stainless_steel"
+    checker_rules:
+      - "Material preferencial: inox (316L) para sistemas de alta pureza"
+      - "Catálogo: B36.19M quando inox"
+    known_limitations:
+      - "Condutividade elétrica e pH não modelados"
+
+  chilled_water:
+    description: "Água gelada / chilled water — sistemas AVAC e data centre"
+    regime: pressurized_incompressible
+    typical_use_case: "Redes de arrefecimento, Fan Coil Units, AHUs, CRAC/CRAH em data centre"
+    default_profile_tags: [datacentre_building_services_eu, datacentre_building_services_us]
+    primary_design_code_candidates: [ASME_B31_9, EN_13480]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      max_ms: 3.0
+      min_ms: 0.5
+    pressure_drop_criteria:
+      typical_bar_per_100m: 0.20
+      note: "Critério governante em data centre: balanceamento e ΔP total do circuito"
+    compressibility_required: false
+    gravity_required: false
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "carbon_steel_water"
+    checker_rules:
+      - "Verificar temperatura mínima (risco de gelo quando com glicol)"
+      - "B31.9 preferencial; B31.3 se pressão > 20.7 bar"
+    known_limitations:
+      - "Mistura água/glicol: usar CoolProp com fluido específico ou fornecer propriedades"
+    report_disclaimer_template: >
+      Chilled water calculada com propriedades de água limpa.
+      Para solução com inibidores ou glicol: fornecer propriedades do fabricante.
+
+  condenser_water:
+    description: "Água de condensação — torres de arrefecimento"
+    regime: pressurized_incompressible
+    typical_use_case: "Circuito de torre de arrefecimento, condensadores de chillers"
+    default_profile_tags: [datacentre_building_services_eu, datacentre_building_services_us]
+    primary_design_code_candidates: [ASME_B31_9, EN_13480]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      max_ms: 3.5
+      min_ms: 0.5
+    pressure_drop_criteria:
+      typical_bar_per_100m: 0.25
+    compressibility_required: false
+    gravity_required: false
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "carbon_steel_water"
+    checker_rules:
+      - "Verificar temperatura de operação (tipicamente 25-35°C)"
+    known_limitations:
+      - "Água de torre com tratamento biocida não modelada. Usar propriedades de água limpa."
+
+  vacuum_utility:
+    description: "Vácuo utilitário — processos industriais e laboratórios"
+    regime: vacuum_conductance
+    typical_use_case: "Sistemas de vácuo industrial, laboratórios, embalagem"
+    default_profile_tags: [glass_factory_industrial_eu, industrial_utilities_eu]
+    primary_design_code_candidates: [ASME_B31_3, EN_13480]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      note: "Velocidade em vácuo: avaliada por condutância e fluxo molar"
+    pressure_drop_criteria:
+      note: "Queda de pressão em vácuo: avaliada em termos de pressure ratio"
+    compressibility_required: false
+    gravity_required: false
+    external_pressure_check_required: true  # OBRIGATÓRIO
+    default_corrosion_allowance_policy: "carbon_steel_gas"
+    checker_rules:
+      - "OBRIGATÓRIO: encaminhar para external_pressure_check"
+      - "Nunca aprovar linha de vácuo sem verificação de pressão externa/colapso"
+      - "P_external = P_atm = 1.01325 bar abs para vácuo completo"
+    known_limitations:
+      - "Verificação de colapso: depende de charts ASME/EN — DATASET_MISSING se ausente"
+      - "Condutância: modelo simplificado para regime viscoso (Kn < 0.01)"
+    report_disclaimer_template: >
+      ATENÇÃO: Linha de vácuo requer verificação obrigatória de pressão externa/colapso.
+      Este sistema encaminha o cálculo mas pode requerer dataset normativo externo.
+
+  sanitary_drainage:
+    description: "Drenagem sanitária — esgotos domésticos e industriais"
+    regime: gravity_partially_full
+    typical_use_case: "Redes de esgoto sanitário em edifícios industriais e data centres"
+    default_profile_tags: [datacentre_building_services_eu, industrial_utilities_eu]
+    primary_design_code_candidates: [EN_12056]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      min_self_cleansing_ms: 0.6
+      max_ms: 3.0
+    pressure_drop_criteria:
+      note: "Escoamento livre gravitário — sem pressão motriz"
+    compressibility_required: false
+    gravity_required: true  # OBRIGATÓRIO
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "carbon_steel_water"
+    required_inputs:
+      - slope
+      - flow_rate
+      - material
+    checker_rules:
+      - "NUNCA usar Darcy-Weisbach como motor primário"
+      - "Motor obrigatório: Manning"
+      - "Verificar inclinação mínima (tipicamente 1/100 a 1/50)"
+      - "Verificar velocidade de auto-limpeza (> 0.6 m/s)"
+      - "Verificar profundidade relativa y/D (0.3 a 0.7 para dimensionamento)"
+    known_limitations:
+      - "Manning: regime permanente uniforme apenas"
+      - "Caudal de projeto: deve ser fornecido pelo utilizador (não calculado pelo sistema)"
+    report_disclaimer_template: >
+      Drenagem sanitária calculada por Manning (escoamento gravítico parcialmente cheio).
+      Verificar caudal de projeto com especialista de saneamento.
+
+  rainwater:
+    description: "Água pluvial — drenagem de coberturas e pavimentos"
+    regime: gravity_partially_full
+    typical_use_case: "Coletores pluviais, algerozes, sistemas de drenagem de coberturas"
+    default_profile_tags: [datacentre_building_services_eu, industrial_utilities_eu]
+    primary_design_code_candidates: [EN_12056]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      min_self_cleansing_ms: 0.6
+      max_ms: 3.0
+    gravity_required: true
+    compressibility_required: false
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "carbon_steel_water"
+    required_inputs:
+      - slope
+      - flow_rate
+    checker_rules:
+      - "Motor obrigatório: Manning"
+      - "Verificar slope mínimo (1/100 para canos enterrados)"
+    known_limitations:
+      - "Caudal de projeto: deve ser calculado por especialista (área, intensidade, coeficiente de escoamento)"
+    report_disclaimer_template: >
+      Drenagem pluvial calculada por Manning. Caudal de projeto fornecido pelo utilizador.
+
+  fire_water:
+    description: "Proteção contra incêndio — rede hídrica"
+    regime: fire_protection_special
+    typical_use_case: "Sprinklers, hidrantes, dilúvio, RIA"
+    default_profile_tags: [fire_protection_en, fire_protection_us]
+    primary_design_code_candidates: [EN_12845, NFPA_13]
+    dimensional_catalog_candidates: [ASME_B36_10M, ASME_B36_19M]
+    velocity_limits:
+      note: "Critérios parametrizados por perfil (hazard class / occupancy)"
+      typical_max_distribution_ms: 5.0
+      typical_max_branch_ms: 4.0
+    pressure_drop_criteria:
+      note: "Critério governante: pressão residual mínima no ponto mais desfavorável"
+    compressibility_required: false
+    gravity_required: false
+    external_pressure_check_required: false
+    default_corrosion_allowance_policy: "carbon_steel_water"
+    checker_rules:
+      - "Verificar velocidade dentro dos limites do perfil de incêndio"
+      - "Verificar pressão residual mínima (profile dependent)"
+      - "Catálogo: B36.10M para carbono; B36.19M para inox"
+    known_limitations:
+      - "Dimensionamento completo de rede sprinkler não implementado (apenas DN por velocidade/ΔP)"
+      - "Cálculo de pressão residual: requer análise de rede completa (fora de escopo)"
+    report_disclaimer_template: >
+      AVISO: Dimensionamento de proteção contra incêndio requer análise completa de rede
+      por especialista credenciado. Este sistema verifica apenas DN e velocidade.

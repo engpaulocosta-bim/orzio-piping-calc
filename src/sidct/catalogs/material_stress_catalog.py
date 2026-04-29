@@ -78,6 +78,14 @@ MATERIAL_STRESS: dict[str, list[tuple]] = {
         (150,  138.0, 1.0, 0.85, 0.4),
         (200,  138.0, 1.0, 0.85, 0.4),
     ],
+
+    # PVC-U — conservative public engineering placeholder for pressure-class checks.
+    # Final design must use manufacturer/standard derating tables.
+    "PVCU": [
+        (20,  10.0, 1.0, 1.0, 0.4),
+        (40,   8.0, 1.0, 1.0, 0.4),
+        (60,   5.0, 1.0, 1.0, 0.4),
+    ],
 }
 
 # Aliases (normalização)
@@ -100,6 +108,11 @@ MATERIAL_ALIASES: dict[str, str] = {
     "A312-TP316": "A312TP316",
     "A333-6": "A333GR6",
     "A333GR.6": "A333GR6",
+    "PVC": "PVCU",
+    "PVC-U": "PVCU",
+    "PVCU": "PVCU",
+    "PVCU_EU": "PVCU",
+    "PVCU_US": "PVCU",
 }
 
 

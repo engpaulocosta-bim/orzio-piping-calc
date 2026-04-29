@@ -1,0 +1,401 @@
+schema_version: "1.0"
+calc_modes:
+  calculate_new:
+    label_en: "Size new line"
+    label_pt_BR: "Dimensionar nova linha"
+  check_received:
+    label_en: "Check received line"
+    label_pt_BR: "Conferir linha recebida"
+  compare_alternative:
+    label_en: "Compare alternative"
+    label_pt_BR: "Comparar alternativa"
+
+common:
+  always_visible:
+    - project_name
+    - line_tag
+    - operation_mode
+    - service
+    - project_profile
+    - jurisdiction
+    - material
+    - dimensional_catalog
+    - design_notes
+  mode_required:
+    check_received:
+      - DN_received_mm
+      - schedule_or_wall_received
+
+fields:
+  project_name:
+    label_en: "Project"
+    label_pt_BR: "Projeto"
+    help_en: "Project name used in reports and saved files."
+    help_pt_BR: "Nome do projeto usado nos relatórios e ficheiros guardados."
+  line_tag:
+    label_en: "Line tag"
+    label_pt_BR: "Tag da linha"
+    help_en: "Unique line identifier inside the project."
+    help_pt_BR: "Identificador único da linha dentro do projeto."
+  operation_mode:
+    label_en: "Calculation mode"
+    label_pt_BR: "Modo de cálculo"
+    help_en: "Choose whether SIDCT sizes a new line or checks a received line."
+    help_pt_BR: "Escolha se o SIDCT dimensiona uma linha nova ou confere uma linha recebida."
+  service:
+    label_en: "System"
+    label_pt_BR: "Sistema"
+    help_en: "Piping system/service. It drives the calculation regime and required fields."
+    help_pt_BR: "Sistema de tubagem. Define o regime de cálculo e os campos obrigatórios."
+  project_profile:
+    label_en: "Profile"
+    label_pt_BR: "Perfil"
+    help_en: "Project profile with design criteria and standards."
+    help_pt_BR: "Perfil do projeto com critérios e normas de referência."
+  jurisdiction:
+    label_en: "Region"
+    label_pt_BR: "Região"
+    help_en: "Market/jurisdiction used for materials and catalog filtering."
+    help_pt_BR: "Mercado/jurisdição usado para filtrar materiais e catálogos."
+  material:
+    label_en: "Material"
+    label_pt_BR: "Material"
+    help_en: "Pipe material filtered by selected system and region."
+    help_pt_BR: "Material da tubagem filtrado pelo sistema e região selecionados."
+  dimensional_catalog:
+    label_en: "Catalog"
+    label_pt_BR: "Catálogo"
+    help_en: "Dimensional catalog used for OD, wall and ID."
+    help_pt_BR: "Catálogo dimensional usado para OD, espessura e ID."
+  P_oper_bar:
+    label_en: "Operating pressure [barg]"
+    label_pt_BR: "Pressão de operação [barg]"
+    help_en: "Normal operating pressure. Relevant for pressurized, gas and vacuum systems."
+    help_pt_BR: "Pressão normal de operação. Relevante para sistemas pressurizados, gases e vácuo."
+  T_oper_c:
+    label_en: "Operating temperature [C]"
+    label_pt_BR: "Temperatura de operação [C]"
+    help_en: "Normal operating temperature."
+    help_pt_BR: "Temperatura normal de operação."
+  P_design_bar:
+    label_en: "Design pressure [barg]"
+    label_pt_BR: "Pressão de projeto [barg]"
+    help_en: "Design pressure used by thickness and validation checks."
+    help_pt_BR: "Pressão de projeto usada nas verificações de espessura e validação."
+  T_design_c:
+    label_en: "Design temperature [C]"
+    label_pt_BR: "Temperatura de projeto [C]"
+    help_en: "Design temperature used by material applicability checks."
+    help_pt_BR: "Temperatura de projeto usada nas verificações de material."
+  flow_rate:
+    label_en: "Flow"
+    label_pt_BR: "Caudal"
+    help_en: "Design flow rate in the selected unit."
+    help_pt_BR: "Caudal de projeto na unidade selecionada."
+  flow_rate_basis:
+    label_en: "Flow unit"
+    label_pt_BR: "Unidade do caudal"
+    help_en: "Use liquid units for water/drainage and normal/standard units for gases."
+    help_pt_BR: "Use unidades líquidas para água/drenagem e unidades normalizadas para gases."
+  line_length_m:
+    label_en: "Length [m]"
+    label_pt_BR: "Comprimento [m]"
+    help_en: "Hydraulic length used for pressure drop/head loss."
+    help_pt_BR: "Comprimento hidráulico usado para perda de carga."
+  elevation_delta_m:
+    label_en: "Elevation delta [m]"
+    label_pt_BR: "Desnível [m]"
+    help_en: "Positive value means upward flow."
+    help_pt_BR: "Valor positivo significa subida."
+  slope_mm_m:
+    label_en: "Slope [mm/m]"
+    label_pt_BR: "Declive [mm/m]"
+    help_en: "Required for gravity systems such as rainwater and sanitary drainage."
+    help_pt_BR: "Obrigatório para sistemas gravíticos como pluvial e esgoto sanitário."
+  vacuum_target_mbara:
+    label_en: "Vacuum target [mbar abs]"
+    label_pt_BR: "Vácuo alvo [mbar abs]"
+    help_en: "Required for utility vacuum calculations."
+    help_pt_BR: "Obrigatório para cálculos de vácuo utilitário."
+  corrosion_allowance_mm:
+    label_en: "Corrosion allowance [mm]"
+    label_pt_BR: "Sobreespessura de corrosão [mm]"
+    help_en: "Additional wall allowance for metallic corrosion. Usually not used for plastics."
+    help_pt_BR: "Sobreespessura para corrosão metálica. Normalmente não usada em plásticos."
+  allowable_pressure_drop_bar:
+    label_en: "Allowable dP [bar]"
+    label_pt_BR: "dP admissível [bar]"
+    help_en: "Maximum acceptable pressure drop along the line. Mainly for pressurized systems."
+    help_pt_BR: "Queda de pressão máxima aceitável na linha. Principalmente para sistemas pressurizados."
+  DN_received_mm:
+    label_en: "Received DN [mm]"
+    label_pt_BR: "DN recebido [mm]"
+    help_en: "Required when checking a received line."
+    help_pt_BR: "Obrigatório ao conferir uma linha recebida."
+  schedule_or_wall_received:
+    label_en: "Received schedule/wall"
+    label_pt_BR: "Schedule/espessura recebida"
+    help_en: "Schedule name or wall thickness in mm. Required in check mode."
+    help_pt_BR: "Nome do schedule ou espessura em mm. Obrigatório em modo de conferência."
+  fittings_90lr:
+    label_en: "90 LR elbows"
+    label_pt_BR: "Cotovelos 90 LR"
+    help_en: "Number of long-radius 90 degree elbows included in minor losses."
+    help_pt_BR: "Número de cotovelos 90 graus raio longo incluídos nas perdas localizadas."
+  design_notes:
+    label_en: "Notes"
+    label_pt_BR: "Notas"
+    help_en: "Free engineering notes for the line."
+    help_pt_BR: "Notas livres de engenharia para a linha."
+
+systems:
+  default_pressurized:
+    applies_to:
+      - potable_water
+      - osmotized_water
+      - service_water
+      - chilled_water
+      - condenser_water
+      - fire_water
+    regime_en: "Pressurized incompressible"
+    regime_pt_BR: "Pressurizado incompressível"
+    visible_fields:
+      - project_name
+      - line_tag
+      - operation_mode
+      - service
+      - project_profile
+      - jurisdiction
+      - material
+      - dimensional_catalog
+      - P_oper_bar
+      - T_oper_c
+      - P_design_bar
+      - T_design_c
+      - flow_rate
+      - flow_rate_basis
+      - line_length_m
+      - elevation_delta_m
+      - corrosion_allowance_mm
+      - allowable_pressure_drop_bar
+      - DN_received_mm
+      - schedule_or_wall_received
+      - fittings_90lr
+      - design_notes
+    required_fields:
+      - project_name
+      - line_tag
+      - service
+      - project_profile
+      - material
+      - dimensional_catalog
+      - P_oper_bar
+      - T_oper_c
+      - P_design_bar
+      - T_design_c
+      - flow_rate
+      - flow_rate_basis
+      - line_length_m
+    optional_fields:
+      - elevation_delta_m
+      - corrosion_allowance_mm
+      - allowable_pressure_drop_bar
+      - fittings_90lr
+      - design_notes
+    disabled_fields: []
+    hidden_fields:
+      - slope_mm_m
+      - vacuum_target_mbara
+    warning_fields: []
+    validation_rules:
+      - P_design_bar >= P_oper_bar
+      - flow_rate > 0
+      - line_length_m > 0
+    explanatory_note_en: "This system uses a pressurized incompressible hydraulic model. Slope and vacuum target are not used."
+    explanatory_note_pt_BR: "Este sistema usa modelo hidráulico pressurizado incompressível. Declive e vácuo alvo não são usados."
+
+  gas:
+    applies_to:
+      - compressed_air
+      - natural_gas
+    regime_en: "Compressible gas"
+    regime_pt_BR: "Gás compressível"
+    visible_fields:
+      - project_name
+      - line_tag
+      - operation_mode
+      - service
+      - project_profile
+      - jurisdiction
+      - material
+      - dimensional_catalog
+      - P_oper_bar
+      - T_oper_c
+      - P_design_bar
+      - T_design_c
+      - flow_rate
+      - flow_rate_basis
+      - line_length_m
+      - elevation_delta_m
+      - corrosion_allowance_mm
+      - allowable_pressure_drop_bar
+      - DN_received_mm
+      - schedule_or_wall_received
+      - fittings_90lr
+      - design_notes
+    required_fields:
+      - project_name
+      - line_tag
+      - service
+      - project_profile
+      - material
+      - dimensional_catalog
+      - P_oper_bar
+      - T_oper_c
+      - P_design_bar
+      - T_design_c
+      - flow_rate
+      - flow_rate_basis
+      - line_length_m
+    optional_fields:
+      - elevation_delta_m
+      - corrosion_allowance_mm
+      - allowable_pressure_drop_bar
+      - fittings_90lr
+      - design_notes
+    disabled_fields: []
+    hidden_fields:
+      - slope_mm_m
+      - vacuum_target_mbara
+    warning_fields:
+      - allowable_pressure_drop_bar
+    validation_rules:
+      - P_design_bar >= P_oper_bar
+      - flow_rate > 0
+      - line_length_m > 0
+    explanatory_note_en: "This system uses a compressible gas model. Check Mach number and pressure ratio warnings."
+    explanatory_note_pt_BR: "Este sistema usa modelo de gás compressível. Verifique avisos de Mach e razão de pressão."
+
+  gravity:
+    applies_to:
+      - sanitary_drainage
+      - rainwater
+    regime_en: "Gravity partially full"
+    regime_pt_BR: "Gravítico parcialmente cheio"
+    visible_fields:
+      - project_name
+      - line_tag
+      - operation_mode
+      - service
+      - project_profile
+      - jurisdiction
+      - material
+      - dimensional_catalog
+      - T_oper_c
+      - T_design_c
+      - flow_rate
+      - flow_rate_basis
+      - line_length_m
+      - elevation_delta_m
+      - slope_mm_m
+      - DN_received_mm
+      - schedule_or_wall_received
+      - design_notes
+    required_fields:
+      - project_name
+      - line_tag
+      - service
+      - project_profile
+      - material
+      - dimensional_catalog
+      - T_oper_c
+      - T_design_c
+      - flow_rate
+      - flow_rate_basis
+      - line_length_m
+      - slope_mm_m
+    optional_fields:
+      - elevation_delta_m
+      - design_notes
+    disabled_fields:
+      - P_oper_bar
+      - P_design_bar
+      - allowable_pressure_drop_bar
+      - vacuum_target_mbara
+      - corrosion_allowance_mm
+      - fittings_90lr
+    hidden_fields:
+      - P_oper_bar
+      - P_design_bar
+      - allowable_pressure_drop_bar
+      - vacuum_target_mbara
+      - corrosion_allowance_mm
+      - fittings_90lr
+    warning_fields: []
+    validation_rules:
+      - flow_rate > 0
+      - line_length_m > 0
+      - slope_mm_m > 0
+    explanatory_note_en: "This system uses Manning gravity flow. Pressure and vacuum fields are not used by the main engine."
+    explanatory_note_pt_BR: "Este sistema usa escoamento gravítico por Manning. Campos de pressão e vácuo não entram no motor principal."
+
+  vacuum:
+    applies_to:
+      - vacuum_utility
+    regime_en: "Vacuum conductance and external pressure check"
+    regime_pt_BR: "Condutância de vácuo e verificação de pressão externa"
+    visible_fields:
+      - project_name
+      - line_tag
+      - operation_mode
+      - service
+      - project_profile
+      - jurisdiction
+      - material
+      - dimensional_catalog
+      - P_oper_bar
+      - T_oper_c
+      - P_design_bar
+      - T_design_c
+      - flow_rate
+      - flow_rate_basis
+      - line_length_m
+      - vacuum_target_mbara
+      - corrosion_allowance_mm
+      - DN_received_mm
+      - schedule_or_wall_received
+      - fittings_90lr
+      - design_notes
+    required_fields:
+      - project_name
+      - line_tag
+      - service
+      - project_profile
+      - material
+      - dimensional_catalog
+      - P_oper_bar
+      - T_oper_c
+      - P_design_bar
+      - T_design_c
+      - flow_rate
+      - flow_rate_basis
+      - line_length_m
+      - vacuum_target_mbara
+    optional_fields:
+      - corrosion_allowance_mm
+      - fittings_90lr
+      - design_notes
+    disabled_fields:
+      - slope_mm_m
+      - allowable_pressure_drop_bar
+    hidden_fields:
+      - slope_mm_m
+      - allowable_pressure_drop_bar
+    warning_fields:
+      - DN_received_mm
+      - schedule_or_wall_received
+    validation_rules:
+      - vacuum_target_mbara > 0
+      - line_length_m > 0
+    explanatory_note_en: "Vacuum lines must be checked for external pressure/collapse. Slope and dP criteria are not used by the main vacuum model."
+    explanatory_note_pt_BR: "Linhas de vácuo exigem verificação de pressão externa/colapso. Declive e dP admissível não entram no modelo principal."

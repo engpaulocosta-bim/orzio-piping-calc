@@ -1,19 +1,20 @@
-"""SIDCT — Entry point. Launches the Streamlit application."""
+"""SIDCT desktop entry point."""
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 
-# Adicionar pasta src ao PYTHONPATH para que 'sidct' seja importável
-src_path = Path(__file__).resolve().parent / "src"
-if str(src_path) not in sys.path:
-    sys.path.insert(0, str(src_path))
+ROOT = Path(__file__).resolve().parent
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-# Caminho real para a aplicação Streamlit
-app_path = src_path / "sidct" / "ui" / "streamlit_app.py"
+from sidct.ui.desktop_app import MissingDesktopDependency, main
 
-# Customizar o namespace para que __file__ aponte para o app interno
-namespace = globals().copy()
-namespace["__file__"] = str(app_path)
 
-# Executar o script do Streamlit no namespace preparado
-with open(app_path, "rb") as f:
-    exec(compile(f.read(), str(app_path), "exec"), namespace)
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except MissingDesktopDependency as exc:
+        print(exc, file=sys.stderr)
+        raise SystemExit(2)

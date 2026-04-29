@@ -19,6 +19,7 @@ from ..config import get_profile, get_service_config
 from ..catalogs.fluid_properties import get_fluid_properties
 from ..units import m3h_to_m3s, bar_to_pa, barg_to_pa_abs
 from ..exceptions import ValidationError, DatasetMissingError, OutOfScopeError
+from ..materials import resolve_catalog, get_material_spec
 
 logger = logging.getLogger("sidct.selector")
 
@@ -29,10 +30,16 @@ FIRE_SERVICES = {"fire_water"}
 
 _PREFERRED_SCHEDULES_CARBON = ["SCH40", "STD", "SCH80", "XS", "SCH20", "SCH10"]
 _PREFERRED_SCHEDULES_STAINLESS = ["SCH40S", "SCH10S", "SCH5S", "SCH80S"]
+_PREFERRED_SCHEDULES_PVC_EU = ["PN16", "PN10"]
+_PREFERRED_SCHEDULES_PVC_US = ["SCH40", "SCH80"]
 
 
 def _preferred_schedule(material: str, catalog: str) -> list[str]:
     mat = material.lower()
+    if "PVC_EN1452" in catalog.upper():
+        return _PREFERRED_SCHEDULES_PVC_EU
+    if "PVC_ASTMD1785" in catalog.upper():
+        return _PREFERRED_SCHEDULES_PVC_US
     is_ss = any(k in mat for k in ("316", "304", "tp3", "inox"))
     if is_ss or "19M" in catalog.upper():
         return _PREFERRED_SCHEDULES_STAINLESS
@@ -44,11 +51,14 @@ def run_full_calculation(inp: LineInput) -> ReportContext:
     import datetime
     profile = get_profile(inp.project_profile)
     service_cfg = get_service_config(inp.service)
-    catalog = inp.dimensional_catalog
-
     warnings_global: list[str] = []
     assumptions: list[str] = []
     citations: list = []
+    catalog, catalog_warnings = resolve_catalog(inp.material, inp.dimensional_catalog, inp.jurisdiction)
+    warnings_global.extend(catalog_warnings)
+    material_spec = get_material_spec(inp.material, inp.jurisdiction)
+    if catalog != inp.dimensional_catalog:
+        inp = inp.model_copy(update={"dimensional_catalog": catalog})
 
     # ── Validação ─────────────────────────────────────────────────────────────
     from ..validators import validate_line_input, validate_profile_service_compatibility
@@ -130,7 +140,8 @@ def run_full_calculation(inp: LineInput) -> ReportContext:
                 hydraulic_result = hydraulic_incompressible.select_dn(
                     inp, fluid, v_min=v_min, v_max=v_max,
                     allowable_dp_bar=allowable_dp,
-                    catalog=catalog, schedule=sch)
+                    catalog=catalog, schedule=sch,
+                    roughness_m=material_spec.roughness_m if material_spec else None)
                 if hydraulic_result.status not in ("OUT_OF_SCOPE",):
                     break
             except (ValidationError, DatasetMissingError, OutOfScopeError):

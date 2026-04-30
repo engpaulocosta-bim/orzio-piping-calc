@@ -8,7 +8,7 @@ from pathlib import Path
 
 from sidct.batch.csv_runner import _parse_row
 from sidct.enums import DimensionalCatalog, Jurisdiction, ProjectProfile, Service
-from sidct.materials import default_catalog_for_material, list_material_specs
+from sidct.materials import available_catalogs_for_material, default_catalog_for_material, list_material_specs
 from sidct.models import FittingItem, LineInput
 from sidct.project import Project, create_default_project, load_project, save_project
 from sidct.reports.exports import export_project_csv, export_project_xlsx, export_rows_csv
@@ -690,7 +690,18 @@ class MainWindow:
         self.requirements_panel.setText(text)
 
     def _material_changed(self) -> None:
-        catalog = default_catalog_for_material(self._selected_material(), self.jurisdiction.currentText())
+        material = self._selected_material()
+        region = self.jurisdiction.currentText()
+        catalogs = available_catalogs_for_material(material, region)
+        current = self.catalog.currentText()
+        self.catalog.blockSignals(True)
+        self.catalog.clear()
+        self.catalog.addItems(catalogs or CATALOGS)
+        self.catalog.blockSignals(False)
+        if current and self.catalog.findText(current) >= 0:
+            self.catalog.setCurrentText(current)
+            return
+        catalog = default_catalog_for_material(material, region)
         if catalog:
             idx = self.catalog.findText(catalog)
             if idx >= 0:
@@ -718,7 +729,14 @@ class MainWindow:
             label = f"{option.display_name} ({option.status})"
             self.material.addItem(label, option.sidct_material)
         if not ready:
-            for material in get_calculation_ready_materials(service, region) or [spec.key for spec in list_material_specs()]:
+            fallback_materials = get_calculation_ready_materials(service, region)
+            if not fallback_materials:
+                fallback_materials = [
+                    spec.key
+                    for spec in list_material_specs()
+                    if available_catalogs_for_material(spec.key, region)
+                ]
+            for material in fallback_materials:
                 self.material.addItem(material, material)
         target = -1
         for idx in range(self.material.count()):

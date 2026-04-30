@@ -224,6 +224,14 @@ systems:
             limitations: ["cost and chloride limits"]
             warnings: ["Check chloride and galvanic compatibility."]
             selection_rank: 3
+          - material_id: carbon_steel_a53
+            display_name: "Carbon steel A53 GrB"
+            sidct_material: "A53 GrB"
+            calculation_ready: true
+            contexts: ["industrial service water", "mechanical rooms", "utility headers where project specification allows A53"]
+            limitations: ["corrosion allowance/coating/lining may be required", "verify project pipe class and joining method"]
+            warnings: ["ASME B36.10M dimensional dataset is used; confirm local project standard and procurement specification."]
+            selection_rank: 4
           - material_id: pvc_u
             display_name: "PVC-U"
             sidct_material: "PVC"
@@ -231,7 +239,7 @@ systems:
             contexts: ["cold low/medium pressure service water"]
             limitations: ["temperature, impact, UV, supports"]
             warnings: ["Not suitable for hot water or fire exposure."]
-            selection_rank: 4
+            selection_rank: 5
         conditional_materials:
           - material_id: ppr
             display_name: "PPR"
@@ -268,6 +276,14 @@ systems:
             limitations: ["cost, chloride compatibility"]
             warnings: ["Check galvanic interfaces and chloride."]
             selection_rank: 2
+          - material_id: carbon_steel_a53
+            display_name: "Carbon steel A53 GrB"
+            sidct_material: "A53 GrB"
+            calculation_ready: true
+            contexts: ["closed-loop chilled water where A53 is in the project pipe class"]
+            limitations: ["closed-loop treatment required", "external condensation/corrosion protection"]
+            warnings: ["ASME B36.10M dimensional dataset is used; confirm local project standard and corrosion policy."]
+            selection_rank: 3
           - material_id: hdpe_chilled
             display_name: "HDPE/PEAD"
             sidct_material: "HDPE"
@@ -275,7 +291,7 @@ systems:
             contexts: ["buried chilled water", "district cooling sections"]
             limitations: ["temperature/pressure derating", "movement and fusion QA"]
             warnings: ["Dataset not implemented; verify manufacturer district-energy data."]
-            selection_rank: 3
+            selection_rank: 4
         conditional_materials:
           - material_id: ppr_ct
             display_name: "PPR/PP-RCT"
@@ -323,6 +339,14 @@ systems:
             limitations: ["chloride and microbial corrosion risk"]
             warnings: ["Do not assume stainless is immune to tower-water corrosion."]
             selection_rank: 3
+          - material_id: carbon_steel_a53
+            display_name: "Carbon steel A53 GrB"
+            sidct_material: "A53 GrB"
+            calculation_ready: true
+            contexts: ["condenser-water headers where A53 is in the project pipe class"]
+            limitations: ["tower-water treatment, fouling and corrosion allowance must be specified"]
+            warnings: ["ASME B36.10M dimensional dataset is used; confirm local project standard and water treatment."]
+            selection_rank: 4
         conditional_materials:
           - material_id: pvc_u
             display_name: "PVC-U"
@@ -331,7 +355,7 @@ systems:
             contexts: ["low-temperature low-pressure auxiliary sections"]
             limitations: ["temperature, UV, impact and fire exposure"]
             warnings: ["Use only where local code and owner standards permit."]
-            selection_rank: 4
+            selection_rank: 5
         blocked_materials: []
 
   natural_gas:
@@ -352,6 +376,14 @@ systems:
             warnings: ["Verify local gas code, ventilation and hazardous area requirements."]
             selection_rank: 1
         allowed_materials:
+          - material_id: carbon_steel_a53
+            display_name: "Carbon steel A53 GrB"
+            sidct_material: "A53 GrB"
+            calculation_ready: true
+            contexts: ["above-ground fuel-gas piping where project gas code and pipe class allow A53"]
+            limitations: ["corrosion protection outdoors", "threaded/welded/grooved method per gas code"]
+            warnings: ["Verify local gas code, utility/AHJ acceptance and hazardous area requirements."]
+            selection_rank: 2
           - material_id: copper_gas
             display_name: "Copper gas tube"
             sidct_material: "Copper"
@@ -359,7 +391,7 @@ systems:
             contexts: ["selected building gas installations where permitted"]
             limitations: ["local gas code restrictions; not universal"]
             warnings: ["Dataset not implemented; confirm jurisdiction allows copper for gas."]
-            selection_rank: 2
+            selection_rank: 3
         conditional_materials:
           - material_id: pe_gas
             display_name: "PE/HDPE gas pipe"
@@ -394,7 +426,15 @@ systems:
             limitations: ["corrosion protection outdoors", "NFPA/local fuel gas code requirements"]
             warnings: ["Verify local fuel gas code and AHJ requirements."]
             selection_rank: 1
-        allowed_materials: []
+        allowed_materials:
+          - material_id: carbon_steel_a53
+            display_name: "Carbon steel A53 GrB"
+            sidct_material: "A53 GrB"
+            calculation_ready: true
+            contexts: ["above-ground fuel-gas piping where NFPA/local fuel gas code and pipe class allow A53"]
+            limitations: ["corrosion protection outdoors", "threaded/welded/grooved method per gas code"]
+            warnings: ["Verify local fuel gas code, utility/AHJ acceptance and product listing where required."]
+            selection_rank: 2
         conditional_materials:
           - material_id: pe_gas
             display_name: "PE/HDPE gas pipe"
@@ -451,6 +491,14 @@ systems:
             limitations: ["cost; pressure class of fittings"]
             warnings: ["Verify all fittings are rated for compressed air."]
             selection_rank: 3
+          - material_id: carbon_steel_a53
+            display_name: "Carbon steel A53 GrB"
+            sidct_material: "A53 GrB"
+            calculation_ready: true
+            contexts: ["compressed-air headers where A53 is in the project pipe class"]
+            limitations: ["internal corrosion from condensate; filtration/drying needed"]
+            warnings: ["Verify pressure rating, receiver safety philosophy and project pipe class."]
+            selection_rank: 4
         conditional_materials:
           - material_id: ppr_air
             display_name: "Compressed-air-rated PPR"
@@ -459,7 +507,7 @@ systems:
             contexts: ["small networks only when explicitly rated by manufacturer"]
             limitations: ["pressure-temperature derating; mechanical protection"]
             warnings: ["Dataset not implemented; generic PPR must not be used for compressed air."]
-            selection_rank: 4
+            selection_rank: 5
         blocked_materials:
           - material_id: pvc_u
             display_name: "PVC-U"
@@ -492,7 +540,15 @@ systems:
             limitations: ["corrosion and collapse check"]
             warnings: ["External pressure check required."]
             selection_rank: 2
-        allowed_materials: []
+        allowed_materials:
+          - material_id: carbon_steel_a53
+            display_name: "Carbon steel A53 GrB"
+            sidct_material: "A53 GrB"
+            calculation_ready: true
+            contexts: ["industrial utility vacuum where A53 is in the project pipe class"]
+            limitations: ["external pressure/collapse check remains mandatory", "corrosion protection may be required"]
+            warnings: ["External pressure check is still required; ASME B36.10M dimensional dataset is used."]
+            selection_rank: 3
         conditional_materials:
           - material_id: pvc_vacuum_light
             display_name: "PVC/HDPE for light vacuum"
@@ -501,7 +557,7 @@ systems:
             contexts: ["central vacuum/low duty where product is rated"]
             limitations: ["collapse, temperature, leak tightness, static, chemical compatibility"]
             warnings: ["Use only with manufacturer vacuum rating; not for high industrial vacuum."]
-            selection_rank: 3
+            selection_rank: 4
         blocked_materials:
           - material_id: ppr
             display_name: "PPR"

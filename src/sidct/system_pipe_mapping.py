@@ -10,7 +10,7 @@ from typing import Any
 import yaml
 
 from .exceptions import ValidationError
-from .materials import normalize_material_key
+from .materials import normalize_jurisdiction, normalize_material_key
 
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
 MAPPING_PATH = ROOT / "system_pipe_mapping.yaml"
@@ -58,12 +58,7 @@ def load_system_pipe_mapping() -> dict[str, Any]:
 
 
 def normalize_region(region: str) -> str:
-    value = (region or "EU").upper()
-    if value in {"USA", "US", "UNITED_STATES"}:
-        return "US"
-    if value in {"EU", "EUROPE", "INTERNATIONAL", "BRAZIL"}:
-        return "EU"
-    return value
+    return normalize_jurisdiction(region)
 
 
 def get_system_mapping(system_id: str, region: str = "EU") -> dict[str, Any]:
@@ -71,13 +66,15 @@ def get_system_mapping(system_id: str, region: str = "EU") -> dict[str, Any]:
     system = systems.get(system_id, {})
     regions = system.get("regions", {})
     normalized = normalize_region(region)
-    selected = regions.get(normalized) or regions.get("EU") or {}
+    source_region = normalized if normalized in regions else "EU"
+    selected = regions.get(source_region) or {}
     return {
         "system_id": system_id,
         "system_name": system.get("system_name", system_id),
         "future_extension_ready": system.get("future_extension_ready", True),
         "engineering_notes": system.get("engineering_notes", []),
         "region": normalized,
+        "source_region": source_region,
         **selected,
     }
 
@@ -104,7 +101,9 @@ def get_material_options(system_id: str, region: str = "EU", include_blocked: bo
     options: list[PipeMaterialOption] = []
     for group in ALLOWED_GROUPS:
         for item in mapping.get(group, []) or []:
-            options.append(_option_from_item(system_id, mapping["region"], group, item))
+            option = _option_from_item(system_id, mapping["region"], group, item)
+            if _option_compatible_with_region(option, mapping["region"]):
+                options.append(option)
     if include_blocked:
         for item in mapping.get(BLOCKED_GROUP, []) or []:
             options.append(_option_from_item(system_id, mapping["region"], BLOCKED_GROUP, item))
@@ -148,8 +147,21 @@ def _material_matches(option: PipeMaterialOption, material: str, region: str) ->
     if option.material_id.startswith("stainless_steel"):
         return normalized in {"A312TP304", "A312TP316"}
     if option.material_id.startswith("pvc") or option.material_id == "pvc_u":
-        return normalized in {"PVCU_EU", "PVCU_US", "PVCU"}
+        return normalized == normalize_material_key(option.sidct_material or option.material_id, region)
     return option.material_id.lower() == material.lower().replace(" ", "_")
+
+
+def _option_compatible_with_region(option: PipeMaterialOption, region: str) -> bool:
+    if not option.sidct_material:
+        return True
+    material_key = normalize_material_key(option.sidct_material, region)
+    if material_key == "PVCU_UNSUPPORTED":
+        return False
+    if material_key == "PVCU_EU":
+        return normalize_region(region) == "EU"
+    if material_key == "PVCU_US":
+        return normalize_region(region) == "US"
+    return True
 
 
 def validate_system_material_selection(
@@ -162,6 +174,13 @@ def validate_system_material_selection(
     options = get_material_options(system_id, region, include_blocked=True)
     matches = [option for option in options if _material_matches(option, material, region)]
     if not matches:
+        material_key = normalize_material_key(material, region)
+        if material_key in {"PVCU_EU", "PVCU_US", "PVCU_UNSUPPORTED"}:
+            raise ValidationError(
+                f"Material '{material}' is not available for region '{normalize_region(region)}' "
+                "with the current SIDCT dimensional catalogs.",
+                "material",
+            )
         return [
             f"Material '{material}' is not explicitly mapped for system '{system_id}'. "
             "Treat as engineering exception and verify project standards."

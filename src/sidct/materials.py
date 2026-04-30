@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .exceptions import ValidationError, OutOfScopeError
+from .exceptions import DatasetMissingError, ValidationError, OutOfScopeError
 
 
 @dataclass(frozen=True)
@@ -160,11 +160,27 @@ ALIASES: dict[str, str] = {
 }
 
 
+def normalize_jurisdiction(jurisdiction: str = "EU") -> str:
+    value = (jurisdiction or "EU").strip().upper().replace(" ", "_").replace("-", "_")
+    if value in {"US", "USA", "UNITED_STATES", "UNITED_STATES_OF_AMERICA"}:
+        return "US"
+    if value in {"BR", "BRAZIL", "BRASIL"}:
+        return "BRAZIL"
+    if value in {"EU", "EUROPE", "EN", "CEE"}:
+        return "EU"
+    if value in {"INT", "INTERNATIONAL", "GLOBAL"}:
+        return "INTERNATIONAL"
+    return value
+
+
 def normalize_material_key(material: str, jurisdiction: str = "EU") -> str:
     raw = material.strip().upper()
     compact = raw.replace(" ", "").replace("-", "").replace(".", "").replace("_", "")
-    if compact in ("PVC", "PVCU") and jurisdiction.upper() == "US":
+    region = normalize_jurisdiction(jurisdiction)
+    if compact in ("PVC", "PVCU") and region == "US":
         return "PVCU_US"
+    if compact in ("PVC", "PVCU") and region in {"BRAZIL", "INTERNATIONAL"}:
+        return "PVCU_UNSUPPORTED"
     return ALIASES.get(raw, ALIASES.get(compact, compact))
 
 
@@ -176,9 +192,80 @@ def is_pvc_material(material: str) -> bool:
     return normalize_material_key(material).startswith("PVCU")
 
 
+def catalog_region(catalog: str) -> str:
+    normalized = (catalog or "").upper().replace(".", "").replace("-", "").replace("_", "")
+    if normalized in {"PVCEN1452", "EN1452", "PVCUEN1452"}:
+        return "EU"
+    if normalized in {"PVCASTMD1785", "ASTMD1785", "PVCD1785"}:
+        return "US"
+    if normalized in {"NBR5580"}:
+        return "BRAZIL"
+    if normalized in {"ASMEB3610M", "B3610M", "B36_10M", "ASMEB3619M", "B3619M", "B36_19M"}:
+        return "GLOBAL"
+    return "UNKNOWN"
+
+
+def available_catalogs_for_material(material: str, jurisdiction: str = "EU") -> list[str]:
+    spec = get_material_spec(material, jurisdiction)
+    if spec is None:
+        return []
+    if spec.family == "pvc":
+        return [spec.dimensional_catalog]
+    if spec.family == "stainless_steel":
+        return ["ASME_B36_19M"]
+    if spec.family == "carbon_steel":
+        return ["ASME_B36_10M"]
+    return [spec.dimensional_catalog]
+
+
 def default_catalog_for_material(material: str, jurisdiction: str = "EU") -> str | None:
     spec = get_material_spec(material, jurisdiction)
     return spec.dimensional_catalog if spec else None
+
+
+def validate_catalog_for_material(material: str, catalog: str, jurisdiction: str = "EU") -> list[str]:
+    """Validate that a dimensional catalog belongs to the selected jurisdiction."""
+    warnings: list[str] = []
+    region = normalize_jurisdiction(jurisdiction)
+    material_key = normalize_material_key(material, jurisdiction)
+    spec = MATERIAL_SPECS.get(material_key)
+    cat_region = catalog_region(catalog)
+
+    if material_key == "PVCU_UNSUPPORTED":
+        raise DatasetMissingError(
+            f"PVC-U:{region}",
+            f"PVC-U catalog for jurisdiction '{jurisdiction}' is not implemented in SIDCT. "
+            "Use a project-approved local catalog or choose a supported region/material.",
+        )
+    if spec is None:
+        return warnings
+
+    if cat_region == "UNKNOWN":
+        return warnings
+    if spec.family == "pvc" and cat_region == "GLOBAL":
+        warnings.append(
+            f"Material PVC selected with steel catalog '{catalog}'; SIDCT will use "
+            f"'{spec.dimensional_catalog}' for jurisdiction '{jurisdiction}' during calculation."
+        )
+        return warnings
+    if spec.family == "pvc" and cat_region != spec.region:
+        raise ValidationError(
+            f"Catalog '{catalog}' belongs to region '{cat_region}' and cannot be used with "
+            f"PVC material '{material}' in jurisdiction '{jurisdiction}'.",
+            "dimensional_catalog",
+        )
+    if cat_region != "GLOBAL" and cat_region != region:
+        raise ValidationError(
+            f"Catalog '{catalog}' is restricted to region '{cat_region}' and cannot be used "
+            f"for jurisdiction '{jurisdiction}'.",
+            "dimensional_catalog",
+        )
+    if region in {"EU", "BRAZIL", "INTERNATIONAL"} and cat_region == "GLOBAL":
+        warnings.append(
+            f"Catalog '{catalog}' is a global/ASME dimensional dataset in SIDCT; verify the "
+            f"project specification and local acceptance for jurisdiction '{jurisdiction}'."
+        )
+    return warnings
 
 
 def resolve_catalog(material: str, requested_catalog: str, jurisdiction: str = "EU") -> tuple[str, list[str]]:
@@ -186,6 +273,9 @@ def resolve_catalog(material: str, requested_catalog: str, jurisdiction: str = "
     warnings: list[str] = []
     spec = get_material_spec(material, jurisdiction)
     if spec is None:
+        material_key = normalize_material_key(material, jurisdiction)
+        if material_key == "PVCU_UNSUPPORTED":
+            validate_catalog_for_material(material, requested_catalog, jurisdiction)
         return requested_catalog, warnings
 
     requested = requested_catalog.upper()
@@ -195,6 +285,7 @@ def resolve_catalog(material: str, requested_catalog: str, jurisdiction: str = "
             f"Using '{spec.dimensional_catalog}' for jurisdiction {jurisdiction}."
         )
         return spec.dimensional_catalog, warnings
+    warnings.extend(validate_catalog_for_material(material, requested_catalog, jurisdiction))
     return requested_catalog, warnings
 
 
@@ -207,9 +298,15 @@ def validate_material_application(
 ) -> list[str]:
     spec = get_material_spec(material, jurisdiction)
     if spec is None:
+        if normalize_material_key(material, jurisdiction) == "PVCU_UNSUPPORTED":
+            raise DatasetMissingError(
+                f"PVC-U:{normalize_jurisdiction(jurisdiction)}",
+                f"PVC-U catalog for jurisdiction '{jurisdiction}' is not implemented in SIDCT.",
+            )
         return []
 
     warnings: list[str] = []
+    warnings.extend(validate_catalog_for_material(material, spec.dimensional_catalog, jurisdiction))
     if service not in spec.service_allowlist:
         raise ValidationError(
             f"Material '{material}' is not suitable for service '{service}' in the current SIDCT dataset.",

@@ -74,8 +74,9 @@ def validate_line_input(inp: LineInput) -> list[str]:
             f"Material '{inp.material}' identificado como inox — deve usar B36.19M"
         )
 
-    from .materials import validate_material_application
+    from .materials import validate_catalog_for_material, validate_material_application
     from .system_pipe_mapping import validate_system_material_selection
+    warnings.extend(validate_catalog_for_material(inp.material, inp.dimensional_catalog, inp.jurisdiction))
     warnings.extend(
         validate_system_material_selection(
             inp.service,

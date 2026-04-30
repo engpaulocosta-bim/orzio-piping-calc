@@ -5,7 +5,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from sidct.exceptions import ValidationError
+from sidct.exceptions import DatasetMissingError, ValidationError
+from sidct.materials import available_catalogs_for_material, resolve_catalog
 from sidct.models import LineInput
 from sidct.system_pipe_mapping import (
     get_calculation_ready_materials,
@@ -78,6 +79,30 @@ def test_service_water_a53_is_accepted_by_family_mapping():
     warnings = validate_line_input(inp)
 
     assert isinstance(warnings, list)
+
+
+def test_regional_pvc_catalogs_are_restricted_by_jurisdiction():
+    eu_catalog, _ = resolve_catalog("PVC", "ASME_B36_10M", "EU")
+    us_catalog, _ = resolve_catalog("PVC", "ASME_B36_10M", "US")
+
+    assert eu_catalog == "PVC_EN1452"
+    assert us_catalog == "PVC_ASTMD1785"
+    assert available_catalogs_for_material("PVC", "EU") == ["PVC_EN1452"]
+    assert available_catalogs_for_material("PVC", "US") == ["PVC_ASTMD1785"]
+    with pytest.raises(ValidationError):
+        validate_line_input(_inp("service_water", "PVCU_US", "PVC_ASTMD1785", jurisdiction="EU"))
+    with pytest.raises(ValidationError):
+        validate_line_input(_inp("service_water", "PVC", "PVC_EN1452", jurisdiction="US"))
+
+
+def test_brazil_does_not_offer_eu_or_us_pvc_catalogs_without_dataset():
+    ready = get_calculation_ready_materials("service_water", "Brazil")
+
+    assert "PVC" not in ready
+    assert "PVCU_US" not in ready
+    assert available_catalogs_for_material("PVC", "Brazil") == []
+    with pytest.raises(DatasetMissingError):
+        validate_line_input(_inp("service_water", "PVC", "PVC_EN1452", jurisdiction="Brazil"))
 
 
 def test_fire_water_generic_pvc_is_blocked():

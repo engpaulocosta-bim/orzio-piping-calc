@@ -11,6 +11,9 @@ if str(_SRC) not in sys.path:
 
 import streamlit as st
 
+from sidct.materials import available_catalogs_for_material, default_catalog_for_material
+from sidct.system_pipe_mapping import get_material_options
+
 # ── Configuração da página ────────────────────────────────────────────────────
 st.set_page_config(
     page_title="SIDCT — Dimensionamento de Tubagens",
@@ -98,17 +101,29 @@ with st.sidebar:
         key="service",
     )
 
-    material_options = ["A106 GrB", "A53 GrB", "A312 TP304", "A312 TP316", "A333 Gr6"]
+    jurisdiction = st.selectbox("JurisdiÃ§Ã£o", ["EU", "US", "Brazil", "international"], key="jurisdiction")
+    mapped_materials = [
+        option.sidct_material
+        for option in get_material_options(service, jurisdiction)
+        if option.calculation_ready and option.sidct_material
+    ]
+    material_options = mapped_materials or ["A106 GrB", "A53 GrB", "A312 TP304", "A312 TP316"]
     material = st.selectbox("Material", material_options, key="material")
 
-    catalog_options = {"ASME_B36_10M": "B36.10M (Carbono)", "ASME_B36_19M": "B36.19M (Inox)"}
+    catalog_values = available_catalogs_for_material(material, jurisdiction) or ["ASME_B36_10M", "ASME_B36_19M"]
+    catalog_options = {
+        "ASME_B36_10M": "B36.10M (Carbono)",
+        "ASME_B36_19M": "B36.19M (Inox)",
+        "PVC_EN1452": "PVC-U EN/ISO 1452",
+        "PVC_ASTMD1785": "PVC-U ASTM D1785",
+    }
     # Auto-selecção de catálogo
-    default_cat = "ASME_B36_19M" if any(k in material for k in ["TP304", "TP316"]) else "ASME_B36_10M"
+    default_cat = default_catalog_for_material(material, jurisdiction) or catalog_values[0]
     catalog = st.selectbox(
         "Catálogo Dimensional",
-        options=list(catalog_options.keys()),
-        format_func=lambda x: catalog_options[x],
-        index=list(catalog_options.keys()).index(default_cat),
+        options=catalog_values,
+        format_func=lambda x: catalog_options.get(x, x),
+        index=catalog_values.index(default_cat) if default_cat in catalog_values else 0,
         key="catalog",
     )
 

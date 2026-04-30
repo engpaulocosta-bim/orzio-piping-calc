@@ -26,6 +26,15 @@ class ValidationState(BaseModel):
     out_of_scope: list[str] = Field(default_factory=list)
 
 
+class AuditEvent(BaseModel):
+    timestamp: str = Field(default_factory=_now)
+    action: str
+    line_id: str | None = None
+    line_tag: str | None = None
+    message: str = ""
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
 class HydraulicCase(BaseModel):
     case_id: str = Field(default_factory=lambda: str(uuid4()))
     name: str = "Base case"
@@ -96,6 +105,7 @@ class Project(BaseModel):
     updated_at: str = Field(default_factory=_now)
     routes: list[Route] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    audit_log: list[AuditEvent] = Field(default_factory=list)
 
     def touch(self) -> None:
         self.updated_at = _now()
@@ -104,6 +114,7 @@ class Project(BaseModel):
         route = Route(name=name, description=description)
         self.routes.append(route)
         self.touch()
+        self.add_audit("add_route", message=f"Route added: {name}", details={"route_id": route.route_id})
         return route
 
     def add_line(self, route_id: str, line_input: LineInput) -> LineSegment:
@@ -112,6 +123,7 @@ class Project(BaseModel):
             raise ValueError(f"Route not found: {route_id}")
         line = route.add_line(line_input)
         self.touch()
+        self.add_audit("add_line", line.line_id, line.tag, f"Line added: {line.tag}")
         return line
 
     def get_route(self, route_id: str) -> Route | None:
@@ -125,6 +137,13 @@ class Project(BaseModel):
             if line.line_id == line_id:
                 ctx = line.calculate()
                 self.touch()
+                self.add_audit(
+                    "calculate_line",
+                    line.line_id,
+                    line.tag,
+                    f"Line calculated: {line.tag}",
+                    {"status": line.validation_state.status},
+                )
                 return ctx
         raise ValueError(f"Line not found: {line_id}")
 
@@ -135,8 +154,43 @@ class Project(BaseModel):
                 duplicated = line.duplicate(new_tag)
                 route.lines.append(duplicated)
                 self.touch()
+                self.add_audit(
+                    "duplicate_line",
+                    duplicated.line_id,
+                    duplicated.tag,
+                    f"Line duplicated from {line.tag} to {new_tag}",
+                    {"source_line_id": line.line_id},
+                )
                 return duplicated
         raise ValueError(f"Line not found: {line_id}")
+
+    def remove_line(self, line_id: str) -> LineSegment:
+        for route in self.routes:
+            for index, line in enumerate(route.lines):
+                if line.line_id == line_id:
+                    removed = route.lines.pop(index)
+                    self.touch()
+                    self.add_audit("remove_line", removed.line_id, removed.tag, f"Line removed: {removed.tag}")
+                    return removed
+        raise ValueError(f"Line not found: {line_id}")
+
+    def add_audit(
+        self,
+        action: str,
+        line_id: str | None = None,
+        line_tag: str | None = None,
+        message: str = "",
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        self.audit_log.append(
+            AuditEvent(
+                action=action,
+                line_id=line_id,
+                line_tag=line_tag,
+                message=message,
+                details=details or {},
+            )
+        )
 
 
 def create_default_project(name: str = "SIDCT Project") -> Project:

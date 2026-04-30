@@ -14,6 +14,7 @@ def context_to_row(ctx: ReportContext) -> dict[str, object]:
     hyd = ctx.hydraulic_result
     thick = ctx.thickness_result
     check = ctx.checker_result
+    audit = (ctx.dataset_provenance or {}).get("audit", {})
     return {
         "project_name": ctx.project_name,
         "line_tag": ctx.line_tag,
@@ -27,6 +28,8 @@ def context_to_row(ctx: ReportContext) -> dict[str, object]:
         "selected_wall_mm": thick.selected_wall_mm if thick else None,
         "checker_status": check.overall_status if check else "",
         "governing_issue": check.governing_issue if check else "",
+        "calculated_at": audit.get("calculated_at", ""),
+        "schema_version": audit.get("schema_version", ""),
     }
 
 
@@ -48,6 +51,8 @@ def project_rows(project: Project) -> list[dict[str, object]]:
                     "selected_wall_mm": None,
                     "checker_status": line.validation_state.status,
                     "governing_issue": "",
+                    "calculated_at": "",
+                    "schema_version": project.schema_version,
                 })
             else:
                 rows.append(context_to_row(line.last_report_context))

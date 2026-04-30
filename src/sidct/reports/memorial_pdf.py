@@ -129,6 +129,16 @@ def generate_pdf(ctx: ReportContext, output_path: str | Path | None = None) -> b
         ["Preparado por", ctx.prepared_by],
     ], header=False))
     story.append(Spacer(1, 8*mm))
+    story.append(H2("Indice"))
+    story.append(table([
+        ["Seccao", "Conteudo"],
+        ["1", "Perfil de projecto adoptado"],
+        ["2", "Dados de entrada"],
+        ["3-8", "Resultados tecnicos e checker"],
+        ["9-12", "Avisos, limitacoes, proveniencia e normas"],
+        ["13", "Auditoria do calculo"],
+    ]))
+    story.append(Spacer(1, 4*mm))
 
     # ── 2. Perfil adoptado ────────────────────────────────────────────────────
     story.append(H2("1. Perfil de Projecto Adoptado"))
@@ -368,6 +378,21 @@ def generate_pdf(ctx: ReportContext, output_path: str | Path | None = None) -> b
     story.append(Spacer(1, 4*mm))
 
     # ── 14. Rodapé de uso restrito ────────────────────────────────────────────
+    story.append(HR())
+    story.append(H2("13. Auditoria do Calculo"))
+    audit = (ctx.dataset_provenance or {}).get("audit", {})
+    if audit:
+        story.append(table([
+            ["Campo", "Valor"],
+            ["Calculado em", audit.get("calculated_at", "N/A")],
+            ["Projecto actualizado em", audit.get("project_updated_at", "N/A")],
+            ["Versao do schema", audit.get("schema_version", "N/A")],
+            ["Servico", audit.get("service", "N/A")],
+            ["Catalogo", audit.get("catalog", "N/A")],
+        ]))
+    else:
+        story.append(P("Sem metadados de auditoria disponiveis para este contexto."))
+    story.append(Spacer(1, 4*mm))
     story.append(HR())
     story.append(Paragraph(
         "AVISO DE USO RESTRITO: Este memorial foi gerado automaticamente pelo SIDCT v1.0. "

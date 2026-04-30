@@ -19,7 +19,7 @@ def main() -> int:
         "--name",
         "SIDCT",
         "--distpath",
-        "dist_desktop_adaptive_v2",
+        "dist_desktop_adaptive_v5",
         "--workpath",
         "build_desktop",
         "--paths",

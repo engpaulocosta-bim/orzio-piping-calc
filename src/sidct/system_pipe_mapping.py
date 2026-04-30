@@ -129,6 +129,10 @@ def get_mapping_notes(system_id: str, region: str = "EU") -> list[str]:
     mapping = get_system_mapping(system_id, region)
     notes = list(mapping.get("engineering_notes", []) or [])
     for option in get_material_options(system_id, region):
+        if option.status == "conditional":
+            note_parts = list(option.warnings or []) + list(option.limitations or [])
+            if note_parts:
+                notes.append(f"{option.display_name}: {'; '.join(note_parts[:3])}")
         if option.calculation_ready:
             continue
         notes.append(f"{option.display_name}: {', '.join(option.warnings) or 'not calculation-ready in current dataset'}")

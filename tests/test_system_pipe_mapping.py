@@ -43,6 +43,9 @@ def test_potable_water_offers_stainless_and_pvc_but_blocks_black_steel():
 
     assert "A312 TP316" in ready
     assert "PVC" in ready
+    assert "A53 GrB" in ready
+    warnings = validate_system_material_selection("potable_water", "A53 GrB", "EU")
+    assert any("potable" in warning.lower() for warning in warnings)
     with pytest.raises(ValidationError):
         validate_system_material_selection("potable_water", "A106 GrB", "EU")
 

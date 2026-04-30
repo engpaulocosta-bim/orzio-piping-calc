@@ -1,13 +1,17 @@
 """SIDCT desktop application built with PySide6."""
 from __future__ import annotations
 
+import csv
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
-from sidct.materials import default_catalog_for_material
+from sidct.batch.csv_runner import _parse_row
+from sidct.enums import DimensionalCatalog, Jurisdiction, ProjectProfile, Service
+from sidct.materials import default_catalog_for_material, list_material_specs
 from sidct.models import FittingItem, LineInput
 from sidct.project import Project, create_default_project, load_project, save_project
-from sidct.reports.exports import export_project_csv, export_project_xlsx
+from sidct.reports.exports import export_project_csv, export_project_xlsx, export_rows_csv
 from sidct.reports.memorial_pdf import generate_pdf
 from sidct.system_pipe_mapping import get_calculation_ready_materials, get_mapping_notes, get_material_options
 from sidct.ui.form_behavior import (
@@ -17,267 +21,86 @@ from sidct.ui.form_behavior import (
     get_form_behavior,
     list_fields,
 )
+from sidct.ui.theme import get_light_theme_stylesheet, get_status_color
+from sidct.ui.translations import (
+    RESULT_CARD_KEYS,
+    SERVICE_COLORS,
+    SERVICE_LABELS,
+    STATUS_LABELS,
+    TRANSLATIONS,
+)
+from sidct.ui.panels.project_tree import ProjectTreePanel
+from sidct.ui.panels.results_panel import ResultsPanel
 
 
-SERVICES = [
-    "compressed_air",
-    "natural_gas",
-    "potable_water",
-    "service_water",
-    "osmotized_water",
-    "chilled_water",
-    "condenser_water",
-    "vacuum_utility",
-    "sanitary_drainage",
-    "rainwater",
-    "fire_water",
-]
+SERVICES = [service.value for service in Service]
+PROFILES = [profile.value for profile in ProjectProfile if profile != ProjectProfile.CUSTOM]
+CATALOGS = [catalog.value for catalog in DimensionalCatalog]
+JURISDICTIONS = [jurisdiction.value for jurisdiction in Jurisdiction if jurisdiction != Jurisdiction.CUSTOM]
 
-PROFILES = [
-    "glass_factory_industrial_eu",
-    "glass_factory_industrial_us",
-    "industrial_utilities_eu",
-    "datacentre_building_services_eu",
-    "datacentre_building_services_us",
-    "fire_protection_en",
-    "fire_protection_us",
-]
-
-CATALOGS = ["ASME_B36_10M", "ASME_B36_19M", "PVC_EN1452", "PVC_ASTMD1785"]
-MATERIALS = ["A106 GrB", "A53 GrB", "A312 TP304", "A312 TP316", "PVC", "PVCU_US"]
-
-SERVICE_COLORS = {
-    "potable_water": "#2FBF9F",
-    "service_water": "#0F8B8D",
-    "osmotized_water": "#7DD3FC",
-    "chilled_water": "#2563EB",
-    "condenser_water": "#38BDF8",
-    "compressed_air": "#0079B8",
-    "natural_gas": "#F5B700",
-    "vacuum_utility": "#8A8F98",
-    "sanitary_drainage": "#9A6A2F",
-    "rainwater": "#4F8A10",
-    "fire_water": "#D62828",
+SHORTCUTS = {
+    "new": "Ctrl+N",
+    "open": "Ctrl+O",
+    "save": "Ctrl+S",
+    "save_as": "Ctrl+Shift+S",
+    "add_line": "Ctrl+L",
+    "duplicate": "Ctrl+D",
+    "export_pdf": "Ctrl+P",
+    "import_batch": "Ctrl+I",
 }
 
-SERVICE_LABELS = {
-    "en": {
-        "compressed_air": "Compressed air",
-        "natural_gas": "Natural gas",
-        "potable_water": "Potable water",
-        "service_water": "Service water",
-        "osmotized_water": "Osmotized / treated water",
-        "chilled_water": "Chilled water",
-        "condenser_water": "Condenser water",
-        "vacuum_utility": "Vacuum",
-        "sanitary_drainage": "Sanitary drainage",
-        "rainwater": "Rainwater",
-        "fire_water": "Fire protection",
-    },
-    "pt-BR": {
-        "compressed_air": "Ar comprimido",
-        "natural_gas": "Gas natural",
-        "potable_water": "Agua potavel",
-        "service_water": "Agua de servico",
-        "osmotized_water": "Agua osmotizada / tratada",
-        "chilled_water": "Agua gelada",
-        "condenser_water": "Agua de condensacao",
-        "vacuum_utility": "Vacuo",
-        "sanitary_drainage": "Esgoto sanitario",
-        "rainwater": "Aguas pluviais",
-        "fire_water": "Anti-incendio",
-    },
-}
-
-STATUS_LABELS = {
-    "en": {
-        "DRAFT": "Draft",
-        "CALCULATED": "Calculated",
-        "APPROVED": "Approved",
-        "CONSERVATIVE": "Conservative",
-        "INSUFFICIENT": "Insufficient",
-        "ERROR": "Error",
-    },
-    "pt-BR": {
-        "DRAFT": "Rascunho",
-        "CALCULATED": "Calculada",
-        "APPROVED": "Aprovada",
-        "CONSERVATIVE": "Conservadora",
-        "INSUFFICIENT": "Insuficiente",
-        "ERROR": "Erro",
-    },
-}
-
-TRANSLATIONS = {
-    "en": {
-        "title": "SIDCT - Industrial Piping Desktop",
-        "file": "File",
-        "project_menu": "Project",
-        "export": "Export",
-        "options": "Options",
-        "language": "Language",
-        "new": "New",
-        "open": "Open",
-        "save": "Save",
-        "save_as": "Save As",
-        "add_line": "Add Line",
-        "duplicate": "Duplicate",
-        "export_pdf": "Export PDF",
-        "export_csv": "Export CSV",
-        "export_xlsx": "Export XLSX",
-        "calculate": "Calculate Line",
-        "project_and_line": "Project and Line",
-        "service_and_material": "Service and Material",
-        "system_requirements": "System Requirements",
-        "operating_conditions": "Operating Conditions",
-        "flow_geometry": "Flow and Geometry",
-        "criteria_received": "Criteria and Received Line",
-        "notes": "Notes",
-        "project": "Project",
-        "line_tag": "Line tag",
-        "service": "Service",
-        "profile": "Profile",
-        "jurisdiction": "Jurisdiction",
-        "material": "Material",
-        "catalog": "Catalog",
-        "guidance": "Guidance",
-        "p_oper": "P operating [barg]",
-        "t_oper": "T operating [C]",
-        "p_design": "P design [barg]",
-        "t_design": "T design [C]",
-        "flow": "Flow",
-        "flow_unit": "Flow unit",
-        "length": "Length [m]",
-        "elevation": "Elevation delta [m]",
-        "slope": "Slope [mm/m]",
-        "vacuum": "Vacuum target [mbar abs]",
-        "ca": "Corrosion allowance [mm]",
-        "dp_allow": "Allowable dP [bar]",
-        "dn_received": "DN received [mm]",
-        "schedule_received": "Schedule received",
-        "elbows": "90 LR elbows",
-        "summary": "Summary",
-        "results": "Results",
-        "warnings": "Warnings",
-        "assumptions": "Assumptions",
-        "field": "Field",
-        "value": "Value",
-        "metric": "Metric",
-        "ready": "Ready",
-        "no_warnings": "No warnings.",
-        "no_assumptions": "No assumptions declared.",
-        "validation_missing_title": "Required fields missing",
-        "validation_missing_intro": "Missing required fields for this calculation:",
-    },
-    "pt-BR": {
-        "title": "SIDCT - Tubagens Industriais",
-        "file": "Arquivo",
-        "project_menu": "Projeto",
-        "export": "Exportar",
-        "options": "Opcoes",
-        "language": "Idioma",
-        "new": "Novo",
-        "open": "Abrir",
-        "save": "Guardar",
-        "save_as": "Guardar Como",
-        "add_line": "Adicionar Linha",
-        "duplicate": "Duplicar",
-        "export_pdf": "Exportar PDF",
-        "export_csv": "Exportar CSV",
-        "export_xlsx": "Exportar XLSX",
-        "calculate": "Calcular Linha",
-        "project_and_line": "Projeto e Linha",
-        "service_and_material": "Sistema e Material",
-        "system_requirements": "Requisitos do Sistema",
-        "operating_conditions": "Condicoes de Operacao",
-        "flow_geometry": "Caudal e Geometria",
-        "criteria_received": "Criterios e Linha Recebida",
-        "notes": "Notas",
-        "project": "Projeto",
-        "line_tag": "Tag da linha",
-        "service": "Sistema",
-        "profile": "Perfil",
-        "jurisdiction": "Jurisdicao",
-        "material": "Material",
-        "catalog": "Catalogo",
-        "guidance": "Orientacao",
-        "p_oper": "P operacao [barg]",
-        "t_oper": "T operacao [C]",
-        "p_design": "P projeto [barg]",
-        "t_design": "T projeto [C]",
-        "flow": "Caudal",
-        "flow_unit": "Unidade",
-        "length": "Comprimento [m]",
-        "elevation": "Desnivel [m]",
-        "slope": "Declive [mm/m]",
-        "vacuum": "Vacio alvo [mbar abs]",
-        "ca": "Sobreespessura corrosao [mm]",
-        "dp_allow": "dP admissivel [bar]",
-        "dn_received": "DN recebido [mm]",
-        "schedule_received": "Schedule recebido",
-        "elbows": "Cotovelos 90 LR",
-        "summary": "Resumo",
-        "results": "Resultados",
-        "warnings": "Avisos",
-        "assumptions": "Premissas",
-        "field": "Campo",
-        "value": "Valor",
-        "metric": "Metrica",
-        "ready": "Pronto",
-        "no_warnings": "Sem avisos.",
-        "no_assumptions": "Sem premissas declaradas.",
-        "validation_missing_title": "Campos obrigatorios em falta",
-        "validation_missing_intro": "Faltam campos obrigatorios para calcular esta linha:",
-    },
-}
 
 
 class MissingDesktopDependency(RuntimeError):
     pass
 
 
-def _require_qt():
-    try:
-        from PySide6.QtCore import QSettings, Qt
-        from PySide6.QtGui import QAction, QBrush, QColor, QFont
-        from PySide6.QtWidgets import (
-            QApplication,
-            QComboBox,
-            QDoubleSpinBox,
-            QFileDialog,
-            QFormLayout,
-            QFrame,
-            QGridLayout,
-            QGroupBox,
-            QHBoxLayout,
-            QLabel,
-            QLineEdit,
-            QListWidget,
-            QListWidgetItem,
-            QMainWindow,
-            QMessageBox,
-            QPushButton,
-            QSpinBox,
-            QSplitter,
-            QStatusBar,
-            QTableWidget,
-            QTableWidgetItem,
-            QTabWidget,
-            QTextEdit,
-            QToolBar,
-            QVBoxLayout,
-            QWidget,
-        )
-    except ImportError as exc:
+try:
+    from PySide6.QtCore import QSettings, Qt
+    from PySide6.QtGui import QAction, QBrush, QColor, QFont, QKeySequence, QShortcut
+    from PySide6.QtWidgets import (
+        QApplication,
+        QComboBox,
+        QDoubleSpinBox,
+        QFileDialog,
+        QFormLayout,
+        QFrame,
+        QGridLayout,
+        QGroupBox,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QListWidget,
+        QListWidgetItem,
+        QMainWindow,
+        QMessageBox,
+        QPushButton,
+        QScrollArea,
+        QSpinBox,
+        QSplitter,
+        QStatusBar,
+        QTableWidget,
+        QTableWidgetItem,
+        QTabWidget,
+        QTextEdit,
+        QToolBar,
+        QVBoxLayout,
+        QWidget,
+    )
+    _HAS_QT = True
+except ImportError:
+    _HAS_QT = False
+
+
+def _ensure_qt() -> None:
+    if not _HAS_QT:
         raise MissingDesktopDependency(
             "PySide6 is required for the desktop app. Install it with: pip install PySide6"
-        ) from exc
-    return locals()
+        )
 
 
 def _spin(value: float, minimum: float = -1e6, maximum: float = 1e6, step: float = 1.0, decimals: int = 3):
-    qt = _require_qt()
-    widget = qt["QDoubleSpinBox"]()
+    widget = QDoubleSpinBox()
     widget.setRange(minimum, maximum)
     widget.setDecimals(decimals)
     widget.setSingleStep(step)
@@ -285,16 +108,63 @@ def _spin(value: float, minimum: float = -1e6, maximum: float = 1e6, step: float
     return widget
 
 
+if _HAS_QT:
+
+    class CollapsibleGroupBox(QGroupBox):
+        def __init__(self, title: str, parent=None):
+            super().__init__(title, parent)
+            self.setCheckable(True)
+            self.setChecked(True)
+            self.toggled.connect(self._on_toggle)
+
+        def _on_toggle(self, checked: bool) -> None:
+            layout = self.layout()
+            if layout is None:
+                return
+            for index in range(layout.count()):
+                item = layout.itemAt(index)
+                widget = item.widget() if item else None
+                if widget:
+                    widget.setVisible(checked)
+            self.setMaximumHeight(16777215 if checked else 30)
+
+
+    class _Window(QMainWindow):
+        def __init__(self, main_window_ref):
+            super().__init__()
+            self._main = main_window_ref
+
+        def closeEvent(self, event) -> None:
+            self._main.settings.setValue("window_geometry", self.saveGeometry())
+            reply = QMessageBox.question(
+                self,
+                self._main.tr("exit_title"),
+                self._main.tr("exit_message"),
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            )
+            if reply == QMessageBox.Save:
+                if self._main.save_project():
+                    event.accept()
+                else:
+                    event.ignore()
+            elif reply == QMessageBox.Discard:
+                event.accept()
+            else:
+                event.ignore()
+
+else:
+
+    class CollapsibleGroupBox:  # type: ignore[no-redef]
+        pass
+
+
+    class _Window:  # type: ignore[no-redef]
+        pass
+
+
 class MainWindow:
     def __init__(self):
-        qt = _require_qt()
-        self.qt = qt
-        QMainWindow = qt["QMainWindow"]
-
-        class _Window(QMainWindow):
-            pass
-
-        QSettings = qt["QSettings"]
+        _ensure_qt()
         self.settings = QSettings("SIDCT", "SIDCT Desktop")
         self.language = self.settings.value("language", "pt-BR")
         if self.language not in TRANSLATIONS:
@@ -305,10 +175,23 @@ class MainWindow:
         self.field_widgets: dict[str, object] = {}
         self.group_boxes: dict[str, object] = {}
         self.result_cards: dict[str, object] = {}
+        self._results_stale = False
+        self._updating_form = False
 
-        self.window = _Window()
+        self.window = _Window(self)
         self.window.setWindowTitle(self.tr("title"))
-        self.window.resize(1360, 820)
+        screen = QApplication.primaryScreen()
+        if screen:
+            available = screen.availableGeometry()
+            width = min(1360, int(available.width() * 0.85))
+            height = min(820, int(available.height() * 0.85))
+        else:
+            width, height = 1360, 820
+        self.window.resize(width, height)
+        self.window.setMinimumSize(900, 600)
+        geometry = self.settings.value("window_geometry")
+        if geometry:
+            self.window.restoreGeometry(geometry)
         self.project: Project = create_default_project("SIDCT Project")
         self.current_path: Path | None = None
         self.current_line_id: str | None = None
@@ -349,18 +232,6 @@ class MainWindow:
         self.window.show()
 
     def _build_ui(self) -> None:
-        qt = self.qt
-        QWidget = qt["QWidget"]
-        QHBoxLayout = qt["QHBoxLayout"]
-        QVBoxLayout = qt["QVBoxLayout"]
-        QGridLayout = qt["QGridLayout"]
-        QSplitter = qt["QSplitter"]
-        Qt = qt["Qt"]
-        QListWidget = qt["QListWidget"]
-        QTabWidget = qt["QTabWidget"]
-        QTableWidget = qt["QTableWidget"]
-        QTextEdit = qt["QTextEdit"]
-        QStatusBar = qt["QStatusBar"]
 
         self._apply_light_theme()
         self._build_actions()
@@ -370,185 +241,41 @@ class MainWindow:
         splitter = QSplitter(Qt.Horizontal)
         root.addWidget(splitter)
 
-        left = QWidget()
-        left_layout = QVBoxLayout(left)
-        self.project_label = qt["QLabel"]("Project")
-        self.project_tree = QListWidget()
-        self.project_tree.itemSelectionChanged.connect(self._on_tree_selection)
-        left_layout.addWidget(self.project_label)
-        left_layout.addWidget(self.project_tree)
-        splitter.addWidget(left)
+        self.project_panel = ProjectTreePanel(self.language, self.tr, self.service_label, self.status_label)
+        self.project_panel.lineSelected.connect(self._select_line_by_id)
+        self.project_panel.removeRequested.connect(self.remove_line)
+        self.project_panel.recalculateRequested.connect(self.calculate_current)
+        self.project_label = self.project_panel.label
+        self.project_tree = self.project_panel.tree
+        splitter.addWidget(self.project_panel)
 
         self.form_panel = self._build_form()
-        splitter.addWidget(self.form_panel)
+        form_scroll = QScrollArea()
+        form_scroll.setWidget(self.form_panel)
+        form_scroll.setWidgetResizable(True)
+        form_scroll.setFrameShape(QFrame.NoFrame)
+        splitter.addWidget(form_scroll)
 
-        right = QWidget()
-        right_layout = QVBoxLayout(right)
-        cards = QGridLayout()
-        for index, (key, title) in enumerate([
-            ("status", "Status"),
-            ("dn", "DN"),
-            ("material", "Material"),
-            ("schedule", "Schedule"),
-            ("criterion", "Criterion"),
-        ]):
-            frame = qt["QFrame"]()
-            frame.setObjectName("resultCard")
-            card_layout = QVBoxLayout(frame)
-            card_title = qt["QLabel"](title)
-            card_title.setObjectName("resultCardTitle")
-            card_value = qt["QLabel"]("N/A")
-            card_value.setObjectName("resultCardValue")
-            card_value.setWordWrap(True)
-            card_layout.addWidget(card_title)
-            card_layout.addWidget(card_value)
-            self.result_cards[f"{key}_title"] = card_title
-            self.result_cards[key] = card_value
-            cards.addWidget(frame, index // 3, index % 3)
-        right_layout.addLayout(cards)
-        self.tabs = QTabWidget()
-        self.summary_table = QTableWidget(0, 2)
-        self.summary_table.setHorizontalHeaderLabels([self.tr("field"), self.tr("value")])
-        self.results_table = QTableWidget(0, 2)
-        self.results_table.setHorizontalHeaderLabels([self.tr("metric"), self.tr("value")])
-        self.warnings_box = QTextEdit()
-        self.warnings_box.setReadOnly(True)
-        self.assumptions_box = QTextEdit()
-        self.assumptions_box.setReadOnly(True)
-        self.tabs.addTab(self.summary_table, self.tr("summary"))
-        self.tabs.addTab(self.results_table, self.tr("results"))
-        self.tabs.addTab(self.warnings_box, self.tr("warnings"))
-        self.tabs.addTab(self.assumptions_box, self.tr("assumptions"))
-        right_layout.addWidget(self.tabs)
-        splitter.addWidget(right)
-        splitter.setSizes([260, 560, 540])
+        self.results_panel = ResultsPanel(self.language, self.tr, self.status_label)
+        self.result_cards = self.results_panel.result_cards
+        self.tabs = self.results_panel.tabs
+        self.summary_table = self.results_panel.summary_table
+        self.results_table = self.results_panel.results_table
+        self.warnings_box = self.results_panel.warnings_box
+        self.assumptions_box = self.results_panel.assumptions_box
+        self.audit_box = self.results_panel.audit_box
+        splitter.addWidget(self.results_panel)
+        total = self.window.width()
+        splitter.setSizes([int(total * 0.19), int(total * 0.41), int(total * 0.40)])
 
         self.window.setCentralWidget(central)
         self.window.setStatusBar(QStatusBar())
         self._set_status(self.tr("ready"))
 
     def _apply_light_theme(self) -> None:
-        self.window.setStyleSheet("""
-            QMainWindow, QWidget {
-                background: #EEF4F8;
-                color: #172033;
-                font-size: 10pt;
-            }
-            QMenuBar, QMenu {
-                background: #F7FAFC;
-                color: #172033;
-                border-bottom: 1px solid #D7E2EA;
-            }
-            QToolBar {
-                background: #F7FAFC;
-                border: 0;
-                border-bottom: 1px solid #D7E2EA;
-                spacing: 6px;
-                padding: 6px;
-            }
-            QToolButton, QPushButton {
-                background: #FFFFFF;
-                border: 1px solid #CBD8E3;
-                border-radius: 6px;
-                padding: 6px 10px;
-                color: #172033;
-                min-width: 76px;
-            }
-            QPushButton#calculateButton {
-                background: #146C94;
-                color: white;
-                border: 1px solid #0F5D80;
-                font-weight: 700;
-                padding: 10px 14px;
-            }
-            QPushButton#calculateButton:hover {
-                background: #0F5D80;
-            }
-            QGroupBox {
-                background: #FFFFFF;
-                border: 1px solid #D7E2EA;
-                border-radius: 8px;
-                margin-top: 12px;
-                padding: 10px;
-                font-weight: 700;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 4px;
-                color: #24455F;
-            }
-            QLineEdit, QComboBox, QDoubleSpinBox, QSpinBox, QTextEdit {
-                background: #FFFFFF;
-                border: 1px solid #C9D6E2;
-                border-radius: 5px;
-                padding: 4px 7px;
-                color: #172033;
-            }
-            QListWidget, QTableWidget, QTabWidget::pane {
-                background: #FFFFFF;
-                border: 1px solid #D7E2EA;
-                border-radius: 8px;
-            }
-            QListWidget::item {
-                padding: 7px;
-                border-radius: 5px;
-                margin: 2px;
-            }
-            QListWidget::item:selected {
-                background: #DDEEFF;
-                color: #0B3551;
-            }
-            QHeaderView::section {
-                background: #E3ECF3;
-                color: #172033;
-                border: 0;
-                padding: 5px;
-                font-weight: 700;
-            }
-            QFrame#resultCard {
-                background: #FFFFFF;
-                border: 1px solid #D7E2EA;
-                border-radius: 8px;
-                padding: 8px;
-            }
-            QLabel#resultCardTitle {
-                color: #52677A;
-                font-size: 8.5pt;
-                font-weight: 700;
-            }
-            QLabel#resultCardValue {
-                color: #0B3551;
-                font-size: 12pt;
-                font-weight: 800;
-            }
-            QLabel#requirementsPanel {
-                background: #F4F9FC;
-                border: 1px solid #CFE0EC;
-                border-left: 4px solid #146C94;
-                border-radius: 7px;
-                padding: 8px;
-                color: #172033;
-            }
-            QTabBar::tab {
-                background: #E6EEF5;
-                border: 1px solid #D7E2EA;
-                border-bottom: 0;
-                padding: 7px 12px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
-            }
-            QTabBar::tab:selected {
-                background: #FFFFFF;
-                color: #146C94;
-                font-weight: 700;
-            }
-        """)
+        self.window.setStyleSheet(get_light_theme_stylesheet())
 
     def _build_actions(self) -> None:
-        qt = self.qt
-        QAction = qt["QAction"]
-        QToolBar = qt["QToolBar"]
         toolbar = QToolBar("Main")
         self.window.addToolBar(toolbar)
         menu_file = self.window.menuBar().addMenu(self.tr("file"))
@@ -572,6 +299,9 @@ class MainWindow:
             [
                 ("add_line", self.add_line, menu_project),
                 ("duplicate", self.duplicate_line, menu_project),
+                ("recalculate", self.calculate_current, menu_project),
+                ("remove_line", self.remove_line, menu_project),
+                ("import_batch", self.import_batch, menu_project),
             ],
             [
                 ("export_pdf", self.export_pdf, menu_export),
@@ -584,10 +314,16 @@ class MainWindow:
                 toolbar.addSeparator()
             for key, slot, menu in actions:
                 act = QAction(self.tr(key), self.window)
+                if key in SHORTCUTS:
+                    act.setShortcut(SHORTCUTS[key])
                 act.triggered.connect(slot)
                 menu.addAction(act)
                 toolbar.addAction(act)
                 self.actions[key] = act
+
+        calc_shortcut = QShortcut(QKeySequence("F5"), self.window)
+        calc_shortcut.activated.connect(self.calculate_current)
+        self.actions["calculate_shortcut"] = calc_shortcut
 
         language_menu = menu_options.addMenu(self.tr("language"))
         self.menus["language"] = language_menu
@@ -630,20 +366,19 @@ class MainWindow:
         if "guidance" in self.form_labels:
             self.form_labels["guidance"].setText(self.tr("guidance"))
         if self.result_cards:
-            for key, title in [
-                ("status_title", "Status"),
-                ("dn_title", "DN"),
-                ("material_title", self.tr("material")),
-                ("schedule_title", "Schedule"),
-                ("criterion_title", "Criterio" if self.language == "pt-BR" else "Criterion"),
-            ]:
-                if key in self.result_cards:
-                    self.result_cards[key].setText(title)
+            for key, titles in RESULT_CARD_KEYS:
+                title_key = f"{key}_title"
+                if title_key in self.result_cards:
+                    self.result_cards[title_key].setText(titles.get(self.language, titles["en"]))
+        if hasattr(self, "results_panel"):
+            self.results_panel.set_language(self.language)
         if hasattr(self, "tabs"):
             self.tabs.setTabText(0, self.tr("summary"))
             self.tabs.setTabText(1, self.tr("results"))
             self.tabs.setTabText(2, self.tr("warnings"))
             self.tabs.setTabText(3, self.tr("assumptions"))
+            if self.tabs.count() > 4:
+                self.tabs.setTabText(4, self.tr("audit"))
         if hasattr(self, "summary_table"):
             self.summary_table.setHorizontalHeaderLabels([self.tr("field"), self.tr("value")])
         if hasattr(self, "results_table"):
@@ -656,28 +391,19 @@ class MainWindow:
         self._set_status(self.tr("ready"))
 
     def _build_form(self):
-        qt = self.qt
-        QWidget = qt["QWidget"]
-        QVBoxLayout = qt["QVBoxLayout"]
-        QFormLayout = qt["QFormLayout"]
-        QGroupBox = qt["QGroupBox"]
-        QComboBox = qt["QComboBox"]
-        QLineEdit = qt["QLineEdit"]
-        QTextEdit = qt["QTextEdit"]
-        QSpinBox = qt["QSpinBox"]
 
         panel = QWidget()
         layout = QVBoxLayout(panel)
 
         def group(title: str):
-            box = QGroupBox(title)
+            box = CollapsibleGroupBox(title)
             form = QFormLayout(box)
             layout.addWidget(box)
             return form
 
         def add_row(form, field_id: str, widget) -> None:
-            label = qt["QLabel"](self._field_label_text(field_id))
-            label.setTextFormat(self.qt["Qt"].RichText)
+            label = QLabel(self._field_label_text(field_id))
+            label.setTextFormat(Qt.RichText)
             meta = get_field_meta(field_id)
             help_text = meta.help(self.language)
             label.setToolTip(help_text)
@@ -686,6 +412,7 @@ class MainWindow:
             self.form_rows[field_id] = (label, widget)
             self.field_widgets[field_id] = widget
             form.addRow(label, widget)
+            self._connect_stale_signal(widget)
 
         self.project_name = QLineEdit("SIDCT Project")
         self.line_tag = QLineEdit("L-001")
@@ -706,13 +433,13 @@ class MainWindow:
         self.profile = QComboBox()
         self.profile.addItems(PROFILES)
         self.jurisdiction = QComboBox()
-        self.jurisdiction.addItems(["EU", "US", "Brazil", "international"])
+        self.jurisdiction.addItems(JURISDICTIONS)
         self.jurisdiction.currentTextChanged.connect(self._service_or_region_changed)
         self.material = QComboBox()
         self.material.currentTextChanged.connect(self._material_changed)
         self.catalog = QComboBox()
         self.catalog.addItems(CATALOGS)
-        self.material_guidance = qt["QLabel"]("")
+        self.material_guidance = QLabel("")
         self.material_guidance.setWordWrap(True)
         form = group(self.tr("service_and_material"))
         self.group_boxes["service_and_material"] = form.parentWidget()
@@ -721,16 +448,23 @@ class MainWindow:
         add_row(form, "jurisdiction", self.jurisdiction)
         add_row(form, "material", self.material)
         add_row(form, "dimensional_catalog", self.catalog)
-        guidance_label = qt["QLabel"](self.tr("guidance"))
+        guidance_label = QLabel(self.tr("guidance"))
         self.form_labels["guidance"] = guidance_label
         form.addRow(guidance_label, self.material_guidance)
 
         requirements = group("Requisitos do Sistema" if self.language == "pt-BR" else "System Requirements")
         self.group_boxes["system_requirements"] = requirements.parentWidget()
-        self.requirements_panel = qt["QLabel"]("")
+        self.requirements_panel = QLabel("")
         self.requirements_panel.setObjectName("requirementsPanel")
         self.requirements_panel.setWordWrap(True)
         requirements.addRow(self.requirements_panel)
+
+        state_form = group(self.tr("line_state"))
+        self.group_boxes["line_state"] = state_form.parentWidget()
+        self.line_state_panel = QLabel("")
+        self.line_state_panel.setObjectName("requirementsPanel")
+        self.line_state_panel.setWordWrap(True)
+        state_form.addRow(self.line_state_panel)
 
         form = group(self.tr("operating_conditions"))
         self.group_boxes["operating_conditions"] = form.parentWidget()
@@ -780,14 +514,100 @@ class MainWindow:
         self.group_boxes["notes"] = form.parentWidget()
         add_row(form, "design_notes", self.notes)
 
-        self.calculate_button = qt["QPushButton"](self.tr("calculate"))
+        self.calculate_button = QPushButton(self.tr("calculate"))
         self.calculate_button.setObjectName("calculateButton")
         self.calculate_button.clicked.connect(self.calculate_current)
         layout.addWidget(self.calculate_button)
         layout.addStretch(1)
-        self._refresh_material_options()
-        self._apply_form_behavior()
+        self._updating_form = True
+        try:
+            self._refresh_material_options()
+            self._apply_form_behavior()
+        finally:
+            self._updating_form = False
+        self._clear_stale()
         return panel
+
+    def _connect_stale_signal(self, widget) -> None:
+        if isinstance(widget, (QDoubleSpinBox, QSpinBox)):
+            widget.valueChanged.connect(self._mark_stale)
+        elif isinstance(widget, QComboBox):
+            widget.currentIndexChanged.connect(self._mark_stale)
+        elif isinstance(widget, QLineEdit):
+            widget.textChanged.connect(self._mark_stale)
+        elif isinstance(widget, QTextEdit):
+            widget.textChanged.connect(self._mark_stale)
+
+    def _mark_stale(self, *args) -> None:
+        if self._updating_form or not hasattr(self, "calculate_button"):
+            return
+        self._results_stale = True
+        self.calculate_button.setText(f"! {self.tr('calculate')}")
+        self.calculate_button.setStyleSheet(
+            "background: #E65100; color: white; font-weight: 700; "
+            "padding: 10px 14px; border-radius: 6px;"
+        )
+        self._refresh_line_state()
+
+    def _clear_stale(self) -> None:
+        self._results_stale = False
+        if hasattr(self, "calculate_button"):
+            self.calculate_button.setText(self.tr("calculate"))
+            self.calculate_button.setStyleSheet("")
+        self._refresh_line_state()
+
+    def _validation_issues(self) -> tuple[list[str], list[str], list[str]]:
+        if not getattr(self, "field_widgets", None):
+            return [], [], []
+        behavior = self._active_form_behavior()
+        pending = [
+            field_id
+            for field_id in behavior.required_fields
+            if field_id in self.form_rows and not self._field_has_value(field_id)
+        ]
+        issues = []
+        if self.P_design.value() < self.P_oper.value() and "P_design_bar >= P_oper_bar" in behavior.validation_rules:
+            issues.append(self.tr("pressure_design_issue"))
+        material_alerts = list(get_mapping_notes(self._selected_service(), self.jurisdiction.currentText())[:3])
+        return pending, issues, material_alerts
+
+    def _refresh_line_state(self) -> None:
+        if not hasattr(self, "line_state_panel"):
+            return
+        pending, issues, material_alerts = self._validation_issues()
+        pending_labels = [get_field_meta(field).label(self.language) for field in pending]
+        pending_text = ", ".join(pending_labels) if pending_labels else self.tr("no_pending_fields")
+        issue_text = "<br>".join(issues) if issues else self.tr("no_pending_fields")
+        alert_text = "<br>".join(material_alerts) if material_alerts else self.tr("no_material_alerts")
+        behavior = self._active_form_behavior()
+        next_steps = [self.tr("calculate_next")]
+        if self._selected_mode() == "check_received":
+            next_steps.append(self.tr("review_received_next"))
+        if self._current_line() and self._current_line().last_report_context:
+            next_steps.append(self.tr("export_next"))
+        text = (
+            f"<b>{self.tr('pending_fields')}:</b> {pending_text}<br>"
+            f"<b>{self.tr('applicable_criteria')}:</b> {behavior.regime(self.language)}; "
+            f"{behavior.explanatory_note(self.language)}<br>"
+            f"<b>{self.tr('material_alerts')}:</b> {alert_text}<br>"
+            f"<b>{self.tr('next_steps')}:</b> {' | '.join(next_steps)}"
+        )
+        if issues:
+            text += f"<br><b>{self.tr('status_field')}:</b> {issue_text}"
+        self.line_state_panel.setText(text)
+        self._apply_validation_styles(pending, issues)
+
+    def _apply_validation_styles(self, pending: list[str], issues: list[str]) -> None:
+        invalid = set(pending)
+        if issues and "P_design_bar" in self.field_widgets:
+            invalid.add("P_design_bar")
+        for field_id, (label, widget) in self.form_rows.items():
+            if field_id in invalid:
+                widget.setStyleSheet("border: 2px solid #B42318; background: #FFF4F2;")
+                label.setStyleSheet("color: #B42318; font-weight: 700;")
+            else:
+                widget.setStyleSheet("")
+                label.setStyleSheet("")
 
     def _seed_default_line(self) -> None:
         route = self.project.routes[0]
@@ -840,10 +660,11 @@ class MainWindow:
             meta = get_field_meta(field_id)
             help_text = meta.help(self.language)
             if field_id in warning:
-                help_text = f"{help_text}\nWarning: confirm applicability for this system."
+                help_text = f"{help_text}\n{self.tr('warning_suffix')}"
             label.setToolTip(help_text)
             widget.setToolTip(help_text)
         self._update_requirements_panel(behavior)
+        self._refresh_line_state()
 
     def _update_requirements_panel(self, behavior) -> None:
         if not hasattr(self, "requirements_panel"):
@@ -897,7 +718,7 @@ class MainWindow:
             label = f"{option.display_name} ({option.status})"
             self.material.addItem(label, option.sidct_material)
         if not ready:
-            for material in MATERIALS:
+            for material in get_calculation_ready_materials(service, region) or [spec.key for spec in list_material_specs()]:
                 self.material.addItem(material, material)
         target = -1
         for idx in range(self.material.count()):
@@ -911,7 +732,7 @@ class MainWindow:
             self.material.setCurrentIndex(target)
         self.material.blockSignals(False)
         notes = get_mapping_notes(service, region)
-        fallback = "Sem orientacao de material disponivel." if self.language == "pt-BR" else "No material guidance available."
+        fallback = self.tr("material_guidance_empty")
         self.material_guidance.setText(" | ".join(notes[:3]) if notes else fallback)
         self._material_changed()
 
@@ -949,50 +770,54 @@ class MainWindow:
         )
 
     def _input_to_form(self, inp: LineInput) -> None:
-        self.project_name.setText(inp.project_name)
-        self.line_tag.setText(inp.line_tag)
-        mode_idx = self.operation_mode.findData(inp.operation_mode)
-        if mode_idx >= 0:
-            self.operation_mode.setCurrentIndex(mode_idx)
-        service_idx = self.service.findData(inp.service)
-        if service_idx >= 0:
-            self.service.setCurrentIndex(service_idx)
-        for combo, value in [
-            (self.profile, inp.project_profile),
-            (self.jurisdiction, inp.jurisdiction),
-            (self.catalog, inp.dimensional_catalog),
-            (self.flow_basis, inp.flow_rate_basis),
-        ]:
-            idx = combo.findText(value)
-            if idx >= 0:
-                combo.setCurrentIndex(idx)
-        self._refresh_material_options(inp.material)
-        self.P_oper.setValue(inp.P_oper_bar)
-        self.T_oper.setValue(inp.T_oper_c)
-        self.P_design.setValue(inp.P_design_bar)
-        self.T_design.setValue(inp.T_design_c)
-        self.flow.setValue(inp.flow_rate)
-        self.length.setValue(inp.line_length_m)
-        self.elevation.setValue(inp.elevation_delta_m)
-        self.ca.setValue(inp.corrosion_allowance_mm or 0.0)
-        self.dp_allow.setValue(inp.allowable_pressure_drop_bar or 0.0)
-        self.dn_received.setValue(inp.DN_received_mm or 0.0)
-        self.schedule_received.setText(inp.schedule_or_wall_received or "")
-        self.slope.setValue(inp.slope_mm_m or 0.0)
-        self.vacuum.setValue(inp.vacuum_target_mbara or 0.0)
-        self.notes.setPlainText(inp.design_notes)
-        self._apply_form_behavior()
+        self._updating_form = True
+        try:
+            self.project_name.setText(inp.project_name)
+            self.line_tag.setText(inp.line_tag)
+            mode_idx = self.operation_mode.findData(inp.operation_mode)
+            if mode_idx >= 0:
+                self.operation_mode.setCurrentIndex(mode_idx)
+            service_idx = self.service.findData(inp.service)
+            if service_idx >= 0:
+                self.service.setCurrentIndex(service_idx)
+            for combo, value in [
+                (self.profile, inp.project_profile),
+                (self.jurisdiction, inp.jurisdiction),
+                (self.catalog, inp.dimensional_catalog),
+                (self.flow_basis, inp.flow_rate_basis),
+            ]:
+                idx = combo.findText(value)
+                if idx >= 0:
+                    combo.setCurrentIndex(idx)
+            self._refresh_material_options(inp.material)
+            self.P_oper.setValue(inp.P_oper_bar)
+            self.T_oper.setValue(inp.T_oper_c)
+            self.P_design.setValue(inp.P_design_bar)
+            self.T_design.setValue(inp.T_design_c)
+            self.flow.setValue(inp.flow_rate)
+            self.length.setValue(inp.line_length_m)
+            self.elevation.setValue(inp.elevation_delta_m)
+            self.ca.setValue(inp.corrosion_allowance_mm or 0.0)
+            self.dp_allow.setValue(inp.allowable_pressure_drop_bar or 0.0)
+            self.dn_received.setValue(inp.DN_received_mm or 0.0)
+            self.schedule_received.setText(inp.schedule_or_wall_received or "")
+            self.slope.setValue(inp.slope_mm_m or 0.0)
+            self.vacuum.setValue(inp.vacuum_target_mbara or 0.0)
+            self.notes.setPlainText(inp.design_notes)
+            self._apply_form_behavior()
+        finally:
+            self._updating_form = False
+        self._clear_stale()
 
     def refresh_project_tree(self) -> None:
-        qt = self.qt
-        QListWidgetItem = qt["QListWidgetItem"]
-        QColor = qt["QColor"]
-        QBrush = qt["QBrush"]
-        QFont = qt["QFont"]
+        if hasattr(self, "project_panel"):
+            self.project_panel.set_language(self.language)
+            self.project_panel.refresh_tree(self.project)
+            return
         self.project_tree.clear()
         self.project_label.setText(f"{self.tr('project')}: {self.project.name}")
         for route in self.project.routes:
-            route_item = QListWidgetItem(f"[Route] {route.name}")
+            route_item = QListWidgetItem(f"[{self.tr('route_prefix')}] {route.name}")
             route_item.setData(256, ("route", route.route_id))
             route_font = QFont()
             route_font.setBold(True)
@@ -1018,6 +843,9 @@ class MainWindow:
         kind, ident = items[0].data(256)
         if kind != "line":
             return
+        self._select_line_by_id(ident)
+
+    def _select_line_by_id(self, ident: str) -> None:
         line = next((line for line in self.project.all_lines() if line.line_id == ident), None)
         if line is None:
             return
@@ -1025,9 +853,11 @@ class MainWindow:
         self._input_to_form(line.line_input)
         if line.last_report_context:
             self._render_context(line.last_report_context)
+        else:
+            self._render_audit(line)
 
     def _current_line(self):
-        if not self.current_line_id:
+        if not getattr(self, "current_line_id", None):
             return None
         return next((line for line in self.project.all_lines() if line.line_id == self.current_line_id), None)
 
@@ -1056,19 +886,9 @@ class MainWindow:
         return True
 
     def _validate_form_before_calculation(self) -> bool:
-        behavior = self._active_form_behavior()
-        missing = [
-            get_field_meta(field_id).label(self.language)
-            for field_id in behavior.required_fields
-            if field_id in self.form_rows and not self._field_has_value(field_id)
-        ]
-        issues = []
-        if self.P_design.value() < self.P_oper.value() and "P_design_bar >= P_oper_bar" in behavior.validation_rules:
-            issues.append(
-                "A pressao de projeto deve ser maior ou igual a pressao de operacao."
-                if self.language == "pt-BR"
-                else "Design pressure must be greater than or equal to operating pressure."
-            )
+        pending, issues, _alerts = self._validation_issues()
+        missing = [get_field_meta(field_id).label(self.language) for field_id in pending]
+        self._refresh_line_state()
         if missing or issues:
             lines = []
             if missing:
@@ -1078,7 +898,6 @@ class MainWindow:
                 if lines:
                     lines.append("")
                 lines.extend([f"- {issue}" for issue in issues])
-            QMessageBox = self.qt["QMessageBox"]
             QMessageBox.warning(self.window, self.tr("validation_missing_title"), "\n".join(lines))
             self._set_status(self.tr("validation_missing_title"))
             return False
@@ -1093,11 +912,59 @@ class MainWindow:
         try:
             self._sync_current_line()
             ctx = line.calculate()
+            self._stamp_context_audit(ctx)
+            self.project.add_audit(
+                "calculate_line",
+                line.line_id,
+                line.tag,
+                f"Line calculated: {line.tag}",
+                {"status": line.validation_state.status},
+            )
             self._render_context(ctx)
             self.refresh_project_tree()
-            self._set_status(f"Calculated {line.tag}")
+            self._auto_save()
+            self._clear_stale()
+            self._set_status(self.tr("calculated_line").format(tag=line.tag))
         except Exception as exc:
-            self._error("Calculation failed", str(exc))
+            self._error(self.tr("calc_failed"), str(exc))
+
+    def _auto_save(self) -> None:
+        if not self.current_path:
+            return
+        auto_path = self.current_path.with_suffix(".autosave.json")
+        try:
+            save_project(self.project, auto_path)
+        except Exception:
+            pass
+
+    def _stamp_context_audit(self, ctx) -> None:
+        ctx.dataset_provenance = dict(ctx.dataset_provenance or {})
+        ctx.dataset_provenance["audit"] = {
+            "calculated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
+            "project_updated_at": self.project.updated_at,
+            "schema_version": self.project.schema_version,
+            "catalog": ctx.line_input.dimensional_catalog if ctx.line_input else "",
+            "service": ctx.line_input.service if ctx.line_input else "",
+        }
+
+    def _render_audit(self, line=None) -> None:
+        if not hasattr(self, "audit_box"):
+            return
+        events = self.project.audit_log[-80:]
+        if line is not None:
+            line_events = [event for event in events if event.line_id in (None, line.line_id)]
+        else:
+            line_events = events
+        lines = []
+        if line is not None:
+            last_case = line.hydraulic_cases[-1] if line.hydraulic_cases else None
+            last = last_case.created_at if last_case else self.tr("never_calculated")
+            lines.append(f"{self.tr('last_calculated')}: {last}")
+            lines.append("")
+        for event in line_events[-40:]:
+            tag = f" [{event.line_tag}]" if event.line_tag else ""
+            lines.append(f"{event.timestamp} | {event.action}{tag} | {event.message}")
+        self.audit_box.setPlainText("\n".join(lines) if lines else self.tr("never_calculated"))
 
     def _render_context(self, ctx) -> None:
         hyd = ctx.hydraulic_result
@@ -1114,12 +981,21 @@ class MainWindow:
             self.result_cards["material"].setText(ctx.line_input.material if ctx.line_input else "N/A")
             self.result_cards["schedule"].setText(thick.selected_schedule if thick else "N/A")
             self.result_cards["criterion"].setText(str(criterion))
+            bg = get_status_color(status)
+            for key, _titles in RESULT_CARD_KEYS:
+                frame = self.result_cards.get(f"{key}_frame")
+                if frame:
+                    frame.setStyleSheet(
+                        "QFrame#resultCard { "
+                        f"background: {bg}; border: 1px solid #D7E2EA; "
+                        "border-radius: 8px; padding: 8px; }"
+                    )
         self._fill_table(self.summary_table, [
-            ("Projeto" if self.language == "pt-BR" else "Project", ctx.project_name),
-            ("Linha" if self.language == "pt-BR" else "Line", ctx.line_tag),
-            ("Status", self.status_label(status)),
-            ("Criterio governante" if self.language == "pt-BR" else "Governing issue", ctx.checker_result.governing_issue if ctx.checker_result else "N/A"),
-            ("Catalogo" if self.language == "pt-BR" else "Catalog", ctx.line_input.dimensional_catalog if ctx.line_input else "N/A"),
+            (self.tr("project_field"), ctx.project_name),
+            (self.tr("line_field"), ctx.line_tag),
+            (self.tr("status_field"), self.status_label(status)),
+            (self.tr("governing_issue"), ctx.checker_result.governing_issue if ctx.checker_result else "N/A"),
+            (self.tr("catalog_field"), ctx.line_input.dimensional_catalog if ctx.line_input else "N/A"),
         ])
         rows = []
         if hyd:
@@ -1169,10 +1045,9 @@ class MainWindow:
         warnings.extend([w.message for w in ctx.warnings])
         self.warnings_box.setPlainText("\n".join(warnings) or self.tr("no_warnings"))
         self.assumptions_box.setPlainText("\n".join(sorted(set(assumptions))) or self.tr("no_assumptions"))
+        self._render_audit(self._current_line())
 
     def _fill_table(self, table, rows) -> None:
-        qt = self.qt
-        QTableWidgetItem = qt["QTableWidgetItem"]
         table.setRowCount(len(rows))
         for row, (field, value) in enumerate(rows):
             table.setItem(row, 0, QTableWidgetItem(str(field)))
@@ -1187,11 +1062,13 @@ class MainWindow:
         self.current_line_id = None
         self._seed_default_line()
         self.refresh_project_tree()
-        self._set_status("New project")
+        self._clear_stale()
+        self._set_status(self.tr("new_project_msg"))
 
     def open_project(self) -> None:
-        QFileDialog = self.qt["QFileDialog"]
-        path, _ = QFileDialog.getOpenFileName(self.window, "Open project", "", "SIDCT Project (*.sidct.json *.json)")
+        path, _ = QFileDialog.getOpenFileName(
+            self.window, self.tr("open_project_dialog"), "", "SIDCT Project (*.sidct.json *.json)"
+        )
         if not path:
             return
         try:
@@ -1203,25 +1080,27 @@ class MainWindow:
                 line = self._current_line()
                 if line:
                     self._input_to_form(line.line_input)
-            self._set_status(f"Opened {path}")
+            self._clear_stale()
+            self._set_status(self.tr("opened_msg").format(path=path))
         except Exception as exc:
-            self._error("Open failed", str(exc))
+            self._error(self.tr("open_failed"), str(exc))
 
-    def save_project(self) -> None:
+    def save_project(self) -> bool:
         if self.current_path is None:
-            self.save_project_as()
-            return
+            return self.save_project_as()
         self._sync_current_line()
         save_project(self.project, self.current_path)
-        self._set_status(f"Saved {self.current_path}")
+        self._set_status(self.tr("saved_msg").format(path=self.current_path))
+        return True
 
-    def save_project_as(self) -> None:
-        QFileDialog = self.qt["QFileDialog"]
-        path, _ = QFileDialog.getSaveFileName(self.window, "Save project", "", "SIDCT Project (*.sidct.json)")
+    def save_project_as(self) -> bool:
+        path, _ = QFileDialog.getSaveFileName(
+            self.window, self.tr("save_project_dialog"), "", "SIDCT Project (*.sidct.json)"
+        )
         if not path:
-            return
+            return False
         self.current_path = Path(path)
-        self.save_project()
+        return self.save_project()
 
     def add_line(self) -> None:
         self._sync_current_line()
@@ -1229,6 +1108,7 @@ class MainWindow:
         count = len(self.project.all_lines()) + 1
         inp = self._form_to_input().model_copy(update={"line_tag": f"L-{count:03d}"})
         line = route.add_line(inp)
+        self.project.add_audit("add_line", line.line_id, line.tag, f"Line added: {line.tag}")
         self.current_line_id = line.line_id
         self._input_to_form(inp)
         self.refresh_project_tree()
@@ -1243,6 +1123,104 @@ class MainWindow:
         self._input_to_form(duplicated.line_input)
         self.refresh_project_tree()
 
+    def remove_line(self) -> None:
+        line = self._current_line()
+        if not line:
+            return
+        reply = QMessageBox.question(
+            self.window,
+            self.tr("confirm_remove_title"),
+            self.tr("confirm_remove_msg").format(tag=line.tag),
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            return
+        removed_tag = line.tag
+        self.project.remove_line(line.line_id)
+        remaining = self.project.all_lines()
+        self.current_line_id = remaining[0].line_id if remaining else None
+        if self.current_line_id:
+            self._input_to_form(remaining[0].line_input)
+        self.refresh_project_tree()
+        self._set_status(self.tr("removed_msg").format(tag=removed_tag))
+
+    def import_batch(self) -> None:
+        path, _ = QFileDialog.getOpenFileName(
+            self.window,
+            self.tr("batch_dialog"),
+            "",
+            "Batch (*.csv *.xlsx)",
+        )
+        if not path:
+            return
+        try:
+            rows = self._read_batch_rows(Path(path))
+            if not rows:
+                QMessageBox.information(self.window, self.tr("import_batch"), self.tr("batch_no_rows"))
+                return
+            route = self.project.routes[0] if self.project.routes else self.project.add_route("Route A")
+            errors: list[dict[str, object]] = []
+            ok = 0
+            for index, row in enumerate(rows, start=1):
+                line_tag = row.get("line_tag") or f"L-B{index:03d}"
+                try:
+                    inp = _parse_row(row, index)
+                    line = route.add_line(inp)
+                    self.project.add_audit("batch_add_line", line.line_id, line.tag, f"Batch line added: {line.tag}")
+                    ctx = line.calculate(case_name="Batch import")
+                    self._stamp_context_audit(ctx)
+                    self.project.add_audit(
+                        "batch_calculate_line",
+                        line.line_id,
+                        line.tag,
+                        f"Batch line calculated: {line.tag}",
+                        {"status": line.validation_state.status},
+                    )
+                    ok += 1
+                except Exception as exc:
+                    errors.append({"row_index": index, "line_tag": line_tag, "error": str(exc)})
+            self.project.touch()
+            if self.project.all_lines():
+                self.current_line_id = self.project.all_lines()[-1].line_id
+                self._input_to_form(self.project.all_lines()[-1].line_input)
+            self.refresh_project_tree()
+            message = self.tr("batch_done").format(ok=ok, errors=len(errors))
+            if errors:
+                error_path = Path(path).with_suffix(".sidct_errors.csv")
+                export_rows_csv(errors, error_path)
+                message = f"{message}\n{self.tr('batch_errors_saved').format(path=error_path)}"
+            QMessageBox.information(self.window, self.tr("import_batch"), message)
+            self._set_status(message.replace("\n", " | "))
+        except Exception as exc:
+            self._error(self.tr("import_batch"), str(exc))
+
+    def _read_batch_rows(self, path: Path) -> list[dict[str, str]]:
+        if path.suffix.lower() == ".csv":
+            with path.open(encoding="utf-8-sig", newline="") as handle:
+                return [dict(row) for row in csv.DictReader(handle)]
+        if path.suffix.lower() == ".xlsx":
+            try:
+                from openpyxl import load_workbook
+            except ImportError as exc:
+                raise ImportError("openpyxl is required for XLSX batch import") from exc
+            wb = load_workbook(path, read_only=True, data_only=True)
+            ws = wb.active
+            rows = list(ws.iter_rows(values_only=True))
+            if not rows:
+                return []
+            headers = [str(value).strip() if value is not None else "" for value in rows[0]]
+            parsed: list[dict[str, str]] = []
+            for raw in rows[1:]:
+                item = {
+                    headers[index]: "" if value is None else str(value)
+                    for index, value in enumerate(raw)
+                    if index < len(headers) and headers[index]
+                }
+                if any(str(value).strip() for value in item.values()):
+                    parsed.append(item)
+            return parsed
+        raise ValueError(f"Unsupported batch file: {path.suffix}")
+
     def export_pdf(self) -> None:
         line = self._current_line()
         if not line:
@@ -1251,38 +1229,45 @@ class MainWindow:
             self.calculate_current()
         if line.last_report_context is None:
             return
-        QFileDialog = self.qt["QFileDialog"]
-        path, _ = QFileDialog.getSaveFileName(self.window, "Export PDF", f"{line.tag}.pdf", "PDF (*.pdf)")
+        path, _ = QFileDialog.getSaveFileName(
+            self.window, self.tr("export_pdf_dialog"), f"{line.tag}.pdf", "PDF (*.pdf)"
+        )
         if path:
             generate_pdf(line.last_report_context, path)
-            self._set_status(f"Exported {path}")
+            self._set_status(self.tr("exported_msg").format(path=path))
 
     def export_csv(self) -> None:
-        QFileDialog = self.qt["QFileDialog"]
-        path, _ = QFileDialog.getSaveFileName(self.window, "Export CSV", "sidct_results.csv", "CSV (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(
+            self.window, self.tr("export_csv_dialog"), "sidct_results.csv", "CSV (*.csv)"
+        )
         if path:
             export_project_csv(self.project, path)
-            self._set_status(f"Exported {path}")
+            self._set_status(self.tr("exported_msg").format(path=path))
 
     def export_xlsx(self) -> None:
-        QFileDialog = self.qt["QFileDialog"]
-        path, _ = QFileDialog.getSaveFileName(self.window, "Export XLSX", "sidct_results.xlsx", "Excel (*.xlsx)")
+        path, _ = QFileDialog.getSaveFileName(
+            self.window, self.tr("export_xlsx_dialog"), "sidct_results.xlsx", "Excel (*.xlsx)"
+        )
         if path:
             export_project_xlsx(self.project, path)
-            self._set_status(f"Exported {path}")
+            self._set_status(self.tr("exported_msg").format(path=path))
 
     def _error(self, title: str, message: str) -> None:
-        QMessageBox = self.qt["QMessageBox"]
         QMessageBox.critical(self.window, title, message)
         self._set_status(message)
 
     def _set_status(self, message: str) -> None:
-        self.window.statusBar().showMessage(message)
+        lines_count = len(self.project.all_lines()) if hasattr(self, "project") else 0
+        saved = "saved" if self.current_path else "unsaved"
+        full = (
+            f"{self.tr(saved + '_indicator')}  {message}   |   "
+            f"{self.tr('lines_count')}: {lines_count}   |   {self.language.upper()}"
+        )
+        self.window.statusBar().showMessage(full)
 
 
 def main() -> int:
-    qt = _require_qt()
-    QApplication = qt["QApplication"]
+    _ensure_qt()
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("SIDCT")
     window = MainWindow()

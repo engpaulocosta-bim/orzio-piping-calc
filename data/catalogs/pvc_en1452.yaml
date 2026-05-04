@@ -1,0 +1,64 @@
+# PVC-U EN 1452-2 — Thermoplastics piping systems for water supply
+# OD follows ISO 161-1 d-series. Wall thickness by pressure class (PN).
+# Source: publicly reproducible from EN 1452-2 and ISO 4422.
+# SIDCT catalog key: PVC_EN1452
+# Version: 2025-01
+catalog_key: PVC_EN1452
+standard: EN 1452-2 / ISO 4422
+material_family: pvc
+density_kgm3: 1400.0
+
+# OD = nominal OD in mm (ISO 161-1 series)
+od:
+  15:  20.0
+  20:  25.0
+  25:  32.0
+  32:  40.0
+  40:  50.0
+  50:  63.0
+  65:  75.0
+  80:  90.0
+  100: 110.0
+  125: 140.0
+  150: 160.0
+  200: 200.0
+  250: 250.0
+  300: 315.0
+
+nps:
+  15:  0.787
+  20:  0.984
+  25:  1.260
+  32:  1.575
+  40:  1.969
+  50:  2.480
+  65:  2.953
+  80:  3.543
+  100: 4.331
+  125: 5.512
+  150: 6.299
+  200: 7.874
+  250: 9.843
+  300: 12.402
+
+# Wall thickness by PN class (mm) — per EN 1452-2 Table 4
+walls:
+  15:  {PN10: 1.5, PN16: 1.9}
+  20:  {PN10: 1.9, PN16: 2.3}
+  25:  {PN10: 2.4, PN16: 3.0}
+  32:  {PN10: 3.0, PN16: 3.7}
+  40:  {PN10: 3.7, PN16: 4.6}
+  50:  {PN10: 4.7, PN16: 5.8}
+  65:  {PN10: 5.6, PN16: 6.8}
+  80:  {PN10: 6.7, PN16: 8.2}
+  100: {PN10: 6.6, PN16: 10.0}
+  125: {PN10: 8.3, PN16: 12.7}
+  150: {PN10: 9.5, PN16: 14.6}
+  200: {PN10: 11.9, PN16: 18.2}
+  250: {PN10: 14.8, PN16: 22.7}
+  300: {PN10: 18.7, PN16: 28.6}
+
+notes: >
+  Temperature derating is mandatory above 20°C. Pressure rating shown
+  is nominal at 20°C. Consult manufacturer tables for final design.
+  Not suitable for compressed air, gases, vacuum or fire-water service.

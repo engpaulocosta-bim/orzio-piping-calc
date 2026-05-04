@@ -5,21 +5,21 @@ cd /d "%~dp0"
 set "LOG=%~dp0Start SIDCT.log"
 echo [%date% %time%] Starting SIDCT > "%LOG%"
 
+if exist "dist_desktop_adaptive_v7\SIDCT\SIDCT.exe" (
+    echo Using dist_desktop_adaptive_v7\SIDCT\SIDCT.exe >> "%LOG%"
+    start "SIDCT" "%~dp0dist_desktop_adaptive_v7\SIDCT\SIDCT.exe"
+    exit /b 0
+)
+
+if exist "dist_desktop_adaptive_v6\SIDCT\SIDCT.exe" (
+    echo Using dist_desktop_adaptive_v6\SIDCT\SIDCT.exe >> "%LOG%"
+    start "SIDCT" "%~dp0dist_desktop_adaptive_v6\SIDCT\SIDCT.exe"
+    exit /b 0
+)
+
 if exist "dist_desktop_adaptive_v5\SIDCT\SIDCT.exe" (
     echo Using dist_desktop_adaptive_v5\SIDCT\SIDCT.exe >> "%LOG%"
     start "SIDCT" "%~dp0dist_desktop_adaptive_v5\SIDCT\SIDCT.exe"
-    exit /b 0
-)
-
-if exist "dist_desktop_adaptive_v4\SIDCT\SIDCT.exe" (
-    echo Using dist_desktop_adaptive_v4\SIDCT\SIDCT.exe >> "%LOG%"
-    start "SIDCT" "%~dp0dist_desktop_adaptive_v4\SIDCT\SIDCT.exe"
-    exit /b 0
-)
-
-if exist "dist_desktop_adaptive_v3\SIDCT\SIDCT.exe" (
-    echo Using dist_desktop_adaptive_v3\SIDCT\SIDCT.exe >> "%LOG%"
-    start "SIDCT" "%~dp0dist_desktop_adaptive_v3\SIDCT\SIDCT.exe"
     exit /b 0
 )
 
@@ -42,30 +42,6 @@ if exist ".venv\Scripts\python.exe" (
         exit /b 0
     )
     echo .venv Python found, but PySide6 is missing. >> "%LOG%"
-)
-
-if exist "dist_desktop_adaptive_v2\SIDCT\SIDCT.exe" (
-    echo Using fallback dist_desktop_adaptive_v2\SIDCT\SIDCT.exe >> "%LOG%"
-    start "SIDCT" "%~dp0dist_desktop_adaptive_v2\SIDCT\SIDCT.exe"
-    exit /b 0
-)
-
-if exist "dist_desktop_adaptive\SIDCT\SIDCT.exe" (
-    echo Using fallback dist_desktop_adaptive\SIDCT\SIDCT.exe >> "%LOG%"
-    start "SIDCT" "%~dp0dist_desktop_adaptive\SIDCT\SIDCT.exe"
-    exit /b 0
-)
-
-if exist "dist_desktop_light\SIDCT\SIDCT.exe" (
-    echo Using fallback dist_desktop_light\SIDCT\SIDCT.exe >> "%LOG%"
-    start "SIDCT" "%~dp0dist_desktop_light\SIDCT\SIDCT.exe"
-    exit /b 0
-)
-
-if exist "dist_desktop_current\SIDCT\SIDCT.exe" (
-    echo Using fallback dist_desktop_current\SIDCT\SIDCT.exe >> "%LOG%"
-    start "SIDCT" "%~dp0dist_desktop_current\SIDCT\SIDCT.exe"
-    exit /b 0
 )
 
 echo No runnable SIDCT target found. >> "%LOG%"

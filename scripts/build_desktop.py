@@ -19,7 +19,7 @@ def main() -> int:
         "--name",
         "SIDCT",
         "--distpath",
-        "dist_desktop_adaptive_v5",
+        "dist_desktop_adaptive_v7",
         "--workpath",
         "build_desktop",
         "--paths",
@@ -36,6 +36,10 @@ def main() -> int:
         "system_pipe_mapping.yaml;.",
         "--add-data",
         "form_behavior_matrix.yaml;.",
+        "--add-data",
+        "data/catalogs;data/catalogs",
+        "--add-data",
+        "data/templates;data/templates",
         "app.py",
     ]
     return subprocess.call(cmd, cwd=ROOT)

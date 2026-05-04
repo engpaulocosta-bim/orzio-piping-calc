@@ -77,3 +77,36 @@ def test_desktop_batch_reader_accepts_csv(tmp_path, desktop_window):
     )
     rows = desktop_window._read_batch_rows(path)
     assert rows[0]["line_tag"] == "L-B01"
+
+
+def test_desktop_batch_reader_accepts_xlsx(tmp_path, desktop_window):
+    from openpyxl import Workbook
+
+    path = tmp_path / "batch.xlsx"
+    wb = Workbook()
+    ws = wb.active
+    ws.append([
+        "project_name", "line_tag", "service", "project_profile", "material",
+        "P_oper_bar", "T_oper_c", "P_design_bar", "T_design_c",
+        "flow_rate", "flow_rate_basis", "line_length_m",
+        "dimensional_catalog", "jurisdiction",
+    ])
+    ws.append([
+        "P", "L-X01", "service_water", "industrial_utilities_eu", "A106 GrB",
+        3, 20, 6, 40, 10, "m3/h", 50, "ASME_B36_10M", "EU",
+    ])
+    wb.save(path)
+
+    rows = desktop_window._read_batch_rows(path)
+    assert rows[0]["line_tag"] == "L-X01"
+    assert rows[0]["P_oper_bar"] == "3"
+
+
+def test_desktop_recent_projects_roundtrip(tmp_path, desktop_window):
+    path = tmp_path / "recent.sidct.json"
+    desktop_window.current_path = path
+    assert desktop_window.save_project()
+
+    assert str(path) in desktop_window.recent_paths
+    desktop_window.clear_recent_projects()
+    assert desktop_window.recent_paths == []

@@ -62,6 +62,23 @@ def _status_color(status: str):
     return _STATUS_COLORS.get(status, colors.black)
 
 
+def _catalog_source(catalog: str | None) -> tuple[str, str]:
+    catalog_key = (catalog or "").upper()
+    if catalog_key == "PVC_EN1452":
+        return "EN 1452 dimensional catalogue subset", "Public/product subset"
+    if catalog_key == "PVC_ASTMD1785":
+        return "ASTM D1785 dimensional catalogue subset", "Public/product subset"
+    if catalog_key == "PE_EN12201":
+        return "EN 12201 PE100 dimensional catalogue subset", "Public/product subset"
+    if catalog_key == "PPR_ISO15874":
+        return "ISO 15874 PP-R dimensional catalogue subset", "Public/product subset"
+    if catalog_key == "ASME_B36_19M":
+        return "ASME B36.19M stainless dimensional subset", "Public subset"
+    if catalog_key == "ASME_B36_10M":
+        return "ASME B36.10M carbon steel dimensional subset", "Public subset"
+    return catalog or "N/A", "Verify project dataset"
+
+
 def generate_pdf(ctx: ReportContext, output_path: str | Path | None = None) -> bytes:
     """Gera PDF e retorna bytes. Se output_path fornecido, também escreve ficheiro."""
     if not REPORTLAB_OK:
@@ -169,6 +186,7 @@ def generate_pdf(ctx: ReportContext, output_path: str | Path | None = None) -> b
             ["Caudal", f"{li.flow_rate} {li.flow_rate_basis}"],
             ["Comprimento", _fmt(li.line_length_m, 1, "m")],
             ["Δ elevação", _fmt(li.elevation_delta_m, 1, "m")],
+            ["Declive", _fmt(li.slope_mm_m, 2, "mm/m")],
             ["Material", li.material],
             ["Catálogo", li.dimensional_catalog],
             ["CA (corrosão)", _fmt(li.corrosion_allowance_mm, 1, "mm")],
@@ -210,6 +228,12 @@ def generate_pdf(ctx: ReportContext, output_path: str | Path | None = None) -> b
             data.append(["ΔP total", _fmt(hr.dp_total_bar, 4, "bar")])
         if hr.head_loss_m is not None:
             data.append(["Perda de carga", _fmt(hr.head_loss_m, 2, "m")])
+        if hr.flow_depth_ratio is not None:
+            data.append(["h/D", _fmt(hr.flow_depth_ratio, 3, "")])
+        if hr.slope_adequacy is not None:
+            data.append(["Adequação do declive", hr.slope_adequacy])
+        if hr.self_cleansing_ok is not None:
+            data.append(["Auto-limpeza", "Sim" if hr.self_cleansing_ok else "Não"])
         if hr.DN_governing_mm is not None:
             data.append(["DN governante", f"{hr.DN_governing_mm:.0f} mm"])
         if hr.mach_number is not None:
@@ -356,10 +380,11 @@ def generate_pdf(ctx: ReportContext, output_path: str | Path | None = None) -> b
 
     # ── 12. Proveniência dos Datasets ─────────────────────────────────────────
     story.append(H2("11. Proveniência dos Dados"))
+    catalog_source, catalog_status = _catalog_source(ctx.line_input.dimensional_catalog if ctx.line_input else None)
     prov_data = [
         ["Dataset", "Fonte", "Status"],
         ["Propriedades do fluido", "CoolProp 6.x / aproximação", "Público"],
-        ["Catálogo dimensional", "ASME B36.10M-2015 / B36.19M-2004", "Dados públicos"],
+        ["Catálogo dimensional", catalog_source, catalog_status],
         ["Tensões admissíveis", "Literatura pública (A106, A53, TP304/316)", "Subset público"],
         ["K-values fittings", "Crane TP-410 (2013)", "Referência pública"],
         ["Equações hidráulicas", "Darcy-Weisbach, Colebrook-White, Manning", "Domínio público"],

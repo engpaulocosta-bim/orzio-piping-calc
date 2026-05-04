@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import csv
+import json
+import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +15,7 @@ from sidct.models import FittingItem, LineInput
 from sidct.project import Project, create_default_project, load_project, save_project
 from sidct.reports.exports import export_project_csv, export_project_xlsx, export_rows_csv
 from sidct.reports.memorial_pdf import generate_pdf
+from sidct.reports.project_pdf import generate_project_pdf
 from sidct.system_pipe_mapping import get_calculation_ready_materials, get_mapping_notes, get_material_options
 from sidct.ui.form_behavior import (
     get_calc_mode_label,
@@ -46,6 +49,7 @@ SHORTCUTS = {
     "add_line": "Ctrl+L",
     "duplicate": "Ctrl+D",
     "export_pdf": "Ctrl+P",
+    "export_project_pdf": "Ctrl+Shift+P",
     "import_batch": "Ctrl+I",
 }
 
@@ -177,6 +181,7 @@ class MainWindow:
         self.result_cards: dict[str, object] = {}
         self._results_stale = False
         self._updating_form = False
+        self.recent_paths = self._load_recent_paths()
 
         self.window = _Window(self)
         self.window.setWindowTitle(self.tr("title"))
@@ -198,6 +203,27 @@ class MainWindow:
         self._build_ui()
         self._seed_default_line()
         self.refresh_project_tree()
+
+    def _load_recent_paths(self) -> list[str]:
+        raw = self.settings.value("recent_projects", "[]")
+        try:
+            values = json.loads(str(raw))
+        except Exception:
+            values = []
+        if not isinstance(values, list):
+            return []
+        return [str(path) for path in values if path and Path(str(path)).exists()][:8]
+
+    def _save_recent_paths(self) -> None:
+        self.settings.setValue("recent_projects", json.dumps(self.recent_paths[:8]))
+
+    def _remember_recent_path(self, path: str | Path) -> None:
+        text = str(Path(path))
+        self.recent_paths = [item for item in self.recent_paths if item != text]
+        self.recent_paths.insert(0, text)
+        self.recent_paths = self.recent_paths[:8]
+        self._save_recent_paths()
+        self._rebuild_recent_menu()
 
     def tr(self, key: str) -> str:
         return TRANSLATIONS.get(self.language, TRANSLATIONS["en"]).get(key, key)
@@ -282,11 +308,13 @@ class MainWindow:
         menu_project = self.window.menuBar().addMenu(self.tr("project_menu"))
         menu_export = self.window.menuBar().addMenu(self.tr("export"))
         menu_options = self.window.menuBar().addMenu(self.tr("options"))
+        menu_help = self.window.menuBar().addMenu(self.tr("about"))
         self.menus = {
             "file": menu_file,
             "project_menu": menu_project,
             "export": menu_export,
             "options": menu_options,
+            "about": menu_help,
         }
 
         action_groups = [
@@ -305,6 +333,7 @@ class MainWindow:
             ],
             [
                 ("export_pdf", self.export_pdf, menu_export),
+                ("export_project_pdf", self.export_project_pdf, menu_export),
                 ("export_csv", self.export_csv, menu_export),
                 ("export_xlsx", self.export_xlsx, menu_export),
             ],
@@ -321,6 +350,15 @@ class MainWindow:
                 toolbar.addAction(act)
                 self.actions[key] = act
 
+        self.recent_menu = menu_file.addMenu(self.tr("recent_projects"))
+        self.menus["recent_projects"] = self.recent_menu
+        self._rebuild_recent_menu()
+
+        about_act = QAction(self.tr("about"), self.window)
+        about_act.triggered.connect(self.show_about)
+        menu_help.addAction(about_act)
+        self.actions["about"] = about_act
+
         calc_shortcut = QShortcut(QKeySequence("F5"), self.window)
         calc_shortcut.activated.connect(self.calculate_current)
         self.actions["calculate_shortcut"] = calc_shortcut
@@ -334,6 +372,21 @@ class MainWindow:
             act.triggered.connect(lambda checked=False, lang=language_key: self.set_language(lang))
             language_menu.addAction(act)
             self.actions[f"language_{language_key}"] = act
+
+    def _rebuild_recent_menu(self) -> None:
+        if not hasattr(self, "recent_menu"):
+            return
+        self.recent_menu.clear()
+        for path in self.recent_paths:
+            act = QAction(Path(path).name, self.window)
+            act.setToolTip(path)
+            act.triggered.connect(lambda checked=False, p=path: self.open_recent_project(p))
+            self.recent_menu.addAction(act)
+        if self.recent_paths:
+            self.recent_menu.addSeparator()
+        clear_act = QAction(self.tr("clear_recent"), self.window)
+        clear_act.triggered.connect(self.clear_recent_projects)
+        self.recent_menu.addAction(clear_act)
 
     def set_language(self, language: str) -> None:
         if language not in TRANSLATIONS:
@@ -383,6 +436,7 @@ class MainWindow:
             self.summary_table.setHorizontalHeaderLabels([self.tr("field"), self.tr("value")])
         if hasattr(self, "results_table"):
             self.results_table.setHorizontalHeaderLabels([self.tr("metric"), self.tr("value")])
+        self._rebuild_recent_menu()
         if hasattr(self, "material"):
             self._refresh_material_options(self._selected_material())
         if hasattr(self, "field_widgets"):
@@ -1089,9 +1143,12 @@ class MainWindow:
         )
         if not path:
             return
+        self._open_project_path(Path(path))
+
+    def _open_project_path(self, path: Path) -> None:
         try:
             self.project = load_project(path)
-            self.current_path = Path(path)
+            self.current_path = path
             self.current_line_id = self.project.all_lines()[0].line_id if self.project.all_lines() else None
             self.refresh_project_tree()
             if self.current_line_id:
@@ -1099,15 +1156,25 @@ class MainWindow:
                 if line:
                     self._input_to_form(line.line_input)
             self._clear_stale()
+            self._remember_recent_path(path)
             self._set_status(self.tr("opened_msg").format(path=path))
         except Exception as exc:
             self._error(self.tr("open_failed"), str(exc))
+
+    def open_recent_project(self, path: str) -> None:
+        self._open_project_path(Path(path))
+
+    def clear_recent_projects(self) -> None:
+        self.recent_paths = []
+        self._save_recent_paths()
+        self._rebuild_recent_menu()
 
     def save_project(self) -> bool:
         if self.current_path is None:
             return self.save_project_as()
         self._sync_current_line()
         save_project(self.project, self.current_path)
+        self._remember_recent_path(self.current_path)
         self._set_status(self.tr("saved_msg").format(path=self.current_path))
         return True
 
@@ -1254,6 +1321,28 @@ class MainWindow:
             generate_pdf(line.last_report_context, path)
             self._set_status(self.tr("exported_msg").format(path=path))
 
+    def export_project_pdf(self) -> None:
+        if not self.project.all_lines():
+            return
+        for line in self.project.all_lines():
+            if line.last_report_context is None:
+                try:
+                    ctx = line.calculate(case_name="Project PDF export")
+                    self._stamp_context_audit(ctx)
+                except Exception as exc:
+                    line.validation_state.errors.append(str(exc))
+        self.project.touch()
+        path, _ = QFileDialog.getSaveFileName(
+            self.window,
+            self.tr("export_project_pdf_dialog"),
+            f"{self.project.name}.pdf",
+            "PDF (*.pdf)",
+        )
+        if path:
+            generate_project_pdf(self.project, path)
+            self.refresh_project_tree()
+            self._set_status(self.tr("exported_msg").format(path=path))
+
     def export_csv(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self.window, self.tr("export_csv_dialog"), "sidct_results.csv", "CSV (*.csv)"
@@ -1274,6 +1363,9 @@ class MainWindow:
         QMessageBox.critical(self.window, title, message)
         self._set_status(message)
 
+    def show_about(self) -> None:
+        QMessageBox.information(self.window, self.tr("about_title"), self.tr("about_message"))
+
     def _set_status(self, message: str) -> None:
         lines_count = len(self.project.all_lines()) if hasattr(self, "project") else 0
         saved = "saved" if self.current_path else "unsaved"
@@ -1286,11 +1378,28 @@ class MainWindow:
 
 def main() -> int:
     _ensure_qt()
+    _activate_file_logging()
     app = QApplication.instance() or QApplication(sys.argv)
     app.setApplicationName("SIDCT")
     window = MainWindow()
     window.show()
     return app.exec()
+
+
+def _activate_file_logging() -> None:
+    """Configure a rotating daily log file under ~/.sidct/logs/."""
+    try:
+        from sidct.logging_config import setup_logging
+        log_dir = Path.home() / ".sidct" / "logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        log_file = str(log_dir / f"sidct_{date_str}.log")
+        setup_logging(level="INFO", log_file=log_file)
+        logging.getLogger("sidct").info(
+            "SIDCT desktop started — log: %s", log_file
+        )
+    except Exception:  # noqa: BLE001
+        pass  # logging failure must never prevent startup
 
 
 if __name__ == "__main__":

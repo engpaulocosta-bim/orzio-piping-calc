@@ -31,9 +31,9 @@ python scripts/build_desktop.py
 Comando equivalente:
 
 ```bash
-pyinstaller --noconfirm --windowed --name SIDCT --distpath dist_desktop_adaptive_v5 --workpath build_desktop --paths src --add-data "project_profiles.yaml;." --add-data "service_matrix.yaml;." --add-data "standards_registry.yaml;." --add-data "assumptions.yaml;." --add-data "system_pipe_mapping.yaml;." --add-data "form_behavior_matrix.yaml;." app.py
+pyinstaller --noconfirm --windowed --name SIDCT --distpath dist_desktop_adaptive_v7 --workpath build_desktop --paths src --add-data "project_profiles.yaml;." --add-data "service_matrix.yaml;." --add-data "standards_registry.yaml;." --add-data "assumptions.yaml;." --add-data "system_pipe_mapping.yaml;." --add-data "form_behavior_matrix.yaml;." --add-data "data/catalogs;data/catalogs" --add-data "data/templates;data/templates" app.py
 ```
 
 ## Nota
 
-PySide6 deve estar instalado no ambiente de build. O executável gerado fica em `dist_desktop_adaptive_v5/SIDCT`.
+PySide6 deve estar instalado no ambiente de build. O executável gerado fica em `dist_desktop_adaptive_v7/SIDCT`.

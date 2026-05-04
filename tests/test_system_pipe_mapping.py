@@ -81,6 +81,15 @@ def test_service_water_a53_is_accepted_by_family_mapping():
     assert isinstance(warnings, list)
 
 
+def test_service_water_exposes_pe100_and_ppr_after_catalog_expansion():
+    ready = get_calculation_ready_materials("service_water", "EU")
+
+    assert "HDPE" in ready
+    assert "PPR" in ready
+    assert available_catalogs_for_material("HDPE", "EU") == ["PE_EN12201"]
+    assert available_catalogs_for_material("PPR", "EU") == ["PPR_ISO15874"]
+
+
 def test_regional_pvc_catalogs_are_restricted_by_jurisdiction():
     eu_catalog, _ = resolve_catalog("PVC", "ASME_B36_10M", "EU")
     us_catalog, _ = resolve_catalog("PVC", "ASME_B36_10M", "US")

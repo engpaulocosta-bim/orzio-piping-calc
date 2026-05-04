@@ -1,0 +1,48 @@
+# PP-R — ISO 15874-2 / Class C — SDR series
+# OD per ISO 161-1 (same series as PE)
+# SIDCT catalog key: PPR_ISO15874
+# Version: 2025-01
+catalog_key: PPR_ISO15874
+standard: ISO 15874-2
+material_family: pp
+density_kgm3: 900.0
+
+od:
+  15: 20.0
+  20: 25.0
+  25: 32.0
+  32: 40.0
+  40: 50.0
+  50: 63.0
+  65: 75.0
+  80: 90.0
+  100: 110.0
+  110: 125.0
+
+nps:
+  15: 0.787
+  20: 0.984
+  25: 1.260
+  32: 1.575
+  40: 1.969
+  50: 2.480
+  65: 2.953
+  80: 3.543
+  100: 4.331
+  110: 4.921
+
+walls:
+  15:  {SDR11: 1.9, SDR7.4: 2.8, SDR6: 3.4}
+  20:  {SDR11: 2.3, SDR7.4: 3.5, SDR6: 4.2}
+  25:  {SDR11: 2.9, SDR7.4: 4.4, SDR6: 5.4}
+  32:  {SDR11: 3.7, SDR7.4: 5.5, SDR6: 6.7}
+  40:  {SDR11: 4.6, SDR7.4: 6.9, SDR6: 8.4}
+  50:  {SDR11: 5.8, SDR7.4: 8.6, SDR6: 10.5}
+  65:  {SDR11: 6.8, SDR7.4: 10.2, SDR6: 12.5}
+  80:  {SDR11: 8.2, SDR7.4: 12.3, SDR6: 15.0}
+  100: {SDR11: 10.0, SDR7.4: 15.1, SDR6: 18.3}
+  110: {SDR11: 11.4, SDR7.4: 17.1, SDR6: 20.8}
+
+notes: >
+  PP-R pressure rating depends on SDR series and operating temperature.
+  SDR11 ≈ PN10@70°C, SDR7.4 ≈ PN16@70°C, SDR6 ≈ PN20@70°C for Class C.

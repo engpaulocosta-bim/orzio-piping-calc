@@ -137,6 +137,14 @@ class Project(BaseModel):
             if line.line_id == line_id:
                 ctx = line.calculate()
                 self.touch()
+                ctx.dataset_provenance = dict(ctx.dataset_provenance or {})
+                ctx.dataset_provenance["audit"] = {
+                    "calculated_at": _now(),
+                    "project_updated_at": self.updated_at,
+                    "schema_version": self.schema_version,
+                    "catalog": ctx.line_input.dimensional_catalog if ctx.line_input else "",
+                    "service": ctx.line_input.service if ctx.line_input else "",
+                }
                 self.add_audit(
                     "calculate_line",
                     line.line_id,

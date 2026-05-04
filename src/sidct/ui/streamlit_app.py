@@ -116,6 +116,8 @@ with st.sidebar:
         "ASME_B36_19M": "B36.19M (Inox)",
         "PVC_EN1452": "PVC-U EN/ISO 1452",
         "PVC_ASTMD1785": "PVC-U ASTM D1785",
+        "PE_EN12201": "PE100 EN 12201 / ISO 4427",
+        "PPR_ISO15874": "PP-R ISO 15874",
     }
     # Auto-selecção de catálogo
     default_cat = default_catalog_for_material(material, jurisdiction) or catalog_values[0]
@@ -126,8 +128,6 @@ with st.sidebar:
         index=catalog_values.index(default_cat) if default_cat in catalog_values else 0,
         key="catalog",
     )
-
-    jurisdiction = st.selectbox("Jurisdição", ["EU", "US", "Brazil", "international"], key="jurisdiction")
 
     st.divider()
     st.caption("SIDCT v1.0 — Uso restrito a engenheiros qualificados")

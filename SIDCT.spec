@@ -5,7 +5,7 @@ a = Analysis(
     ['app.py'],
     pathex=['src'],
     binaries=[],
-    datas=[('project_profiles.yaml', '.'), ('service_matrix.yaml', '.'), ('standards_registry.yaml', '.'), ('assumptions.yaml', '.'), ('system_pipe_mapping.yaml', '.'), ('form_behavior_matrix.yaml', '.')],
+    datas=[('project_profiles.yaml', '.'), ('service_matrix.yaml', '.'), ('standards_registry.yaml', '.'), ('assumptions.yaml', '.'), ('system_pipe_mapping.yaml', '.'), ('form_behavior_matrix.yaml', '.'), ('data/catalogs', 'data/catalogs'), ('data/templates', 'data/templates')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

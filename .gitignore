@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*$py.class
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+.venv/
+venv/
+
+build/
+build_desktop/
+dist/
+dist_desktop/
+dist_desktop_adaptive/
+dist_desktop_adaptive_v*/
+dist_desktop_current/
+dist_desktop_light/
+
+Start SIDCT.log

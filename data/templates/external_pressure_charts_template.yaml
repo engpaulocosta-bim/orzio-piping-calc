@@ -1,0 +1,10 @@
+# Optional user-supplied external pressure chart dataset.
+# Copy to data/user_supplied/external_pressure_charts.yaml and replace with
+# controlled ASME/EN/project-approved data. SIDCT will not invent chart values.
+charts:
+  ASME:
+    source: "ASME Section VIII Div. 1 UG-28 or B31.3 App. D project dataset"
+    edition: "project-controlled"
+    notes:
+      - "Populate with controlled L/Do, Do/t and factor data if your license permits."
+      - "Keep source, edition and approval metadata with the project."

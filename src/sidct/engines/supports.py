@@ -1,7 +1,8 @@
-"""Cálculo preliminar de suportes.
+"""Cálculo de suportes baseado em modelos de vigas estáticas.
 
-CLASSIFICAÇÃO: Ferramenta preliminar / semi-detalhada.
-NÃO substitui análise completa de flexibilidade e tensões.
+CLASSIFICAÇÃO: Estimativa de Engenharia (Engineering Estimate).
+Utiliza modelos clássicos bi-apoiados para vãos máximos e cargas estáticas.
+NÃO substitui análise de flexibilidade e tensões para sistemas complexos ou alta temperatura.
 
 Calcula:
 - Peso por metro (tubo + fluido + isolação)
@@ -13,6 +14,7 @@ import math
 import logging
 from ..models import LineInput, FluidProperties, SupportResult, PipeDimension
 from ..units import G_GRAVITY
+from ..materials import get_material_spec
 
 logger = logging.getLogger("sidct.supports")
 
@@ -50,7 +52,7 @@ def calculate_supports(
     seismic_factor_g: float = 0.1,
     E_steel_pa: float = E_STEEL_PA,
 ) -> SupportResult:
-    """Calcula suportes preliminares."""
+    """Calcula suportes por estimativa estática."""
     warnings: list[str] = []
     assumptions: list[str] = ["A-SUP-001", "A-SUP-002", "A-SUP-003"]
 
@@ -74,9 +76,14 @@ def calculate_supports(
     # Carga distribuída [N/m]
     q = w_total * G_GRAVITY
 
-    if inp.material.lower().replace(" ", "").replace("-", "") in ("pvc", "pvcu", "pvcu_eu", "pvcu_us"):
-        E_steel_pa = 3.0e9
-        warnings.append("PVC support span uses preliminary PVC modulus E = 3.0 GPa.")
+    material_spec = get_material_spec(inp.material, inp.jurisdiction)
+    if material_spec and material_spec.family in {"pvc", "pe", "pp"}:
+        modulus_by_family = {"pvc": 3.0e9, "pe": 1.0e9, "pp": 0.85e9}
+        E_steel_pa = modulus_by_family[material_spec.family]
+        warnings.append(
+            f"{material_spec.grade} support span uses indicative short-term modulus "
+            f"E = {E_steel_pa / 1e9:.2g} GPa; verify manufacturer support tables."
+        )
 
     # Vão máximo por deflexão admissível (viga biapoiada, carga distribuída)
     # δ_max = 5*q*L^4 / (384*E*I)  → L_max = (384*E*I*δ_max / (5*q))^(1/4)
@@ -112,8 +119,9 @@ def calculate_supports(
             "Substituir por factor local conforme zonamento sísmico."
         )
 
-    warnings.append("AVISO: Cálculo de suportes classificado como PRELIMINAR. "
-                    "Não substituir análise de flexibilidade e tensões.")
+    warnings.append("MÉTODO: Estimativa de Engenharia (modelo bi-apoiado estático). "
+                    "Para sistemas sujeitos a expansão térmica ou dinâmicas complexas, "
+                    "requer-se análise formal de tensões.")
 
     return SupportResult(
         line_tag=inp.line_tag,
@@ -124,7 +132,7 @@ def calculate_supports(
         L_max_m=L_max_m,
         deflection_governing=deflection_governing,
         seismic_horizontal_kN=F_seismic_kN,
-        classification_level="PRELIMINARY",
+        classification_level="ENGINEERING_ESTIMATE",
         warnings=warnings,
         assumptions_used=assumptions,
     )

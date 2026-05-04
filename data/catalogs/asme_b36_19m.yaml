@@ -1,0 +1,66 @@
+# ASME B36.19M-2004(R2015) — Stainless Steel Pipe
+# OD is shared with B36.10M. Wall thickness uses "S" suffixed schedules.
+# Source: publicly reproducible from ASME B36.19M-2004(R2015).
+# SIDCT catalog key: ASME_B36_19M
+# Version: 2025-01
+catalog_key: ASME_B36_19M
+standard: ASME B36.19M-2004(R2015)
+material_family: stainless_steel
+density_kgm3: 7850.0
+
+# OD table: same DN/OD as B36.10M (ISO 161-1 compatible)
+od:
+  6:    10.3
+  8:    13.7
+  10:   17.1
+  15:   21.3
+  20:   26.7
+  25:   33.4
+  32:   42.2
+  40:   48.3
+  50:   60.3
+  65:   73.0
+  80:   88.9
+  90:   101.6
+  100:  114.3
+  125:  141.3
+  150:  168.3
+  200:  219.1
+  250:  273.1
+  300:  323.9
+
+nps:
+  6:    0.125
+  8:    0.25
+  10:   0.375
+  15:   0.5
+  20:   0.75
+  25:   1.0
+  32:   1.25
+  40:   1.5
+  50:   2.0
+  65:   2.5
+  80:   3.0
+  90:   3.5
+  100:  4.0
+  125:  5.0
+  150:  6.0
+  200:  8.0
+  250:  10.0
+  300:  12.0
+
+walls:
+  15:  {SCH5S: 1.65, SCH10S: 2.77, SCH40S: 2.77, SCH80S: 3.73}
+  20:  {SCH5S: 1.65, SCH10S: 2.87, SCH40S: 2.87, SCH80S: 3.91}
+  25:  {SCH5S: 1.65, SCH10S: 3.38, SCH40S: 3.38, SCH80S: 4.55}
+  32:  {SCH5S: 1.65, SCH10S: 3.56, SCH40S: 3.56, SCH80S: 4.85}
+  40:  {SCH5S: 1.65, SCH10S: 3.68, SCH40S: 3.68, SCH80S: 5.08}
+  50:  {SCH5S: 1.65, SCH10S: 3.91, SCH40S: 3.91, SCH80S: 5.54}
+  65:  {SCH5S: 2.11, SCH10S: 5.16, SCH40S: 5.16, SCH80S: 7.01}
+  80:  {SCH5S: 2.11, SCH10S: 5.49, SCH40S: 5.49, SCH80S: 7.62}
+  100: {SCH5S: 2.77, SCH10S: 3.05, SCH40S: 6.02, SCH80S: 8.56}
+  125: {SCH5S: 2.77, SCH10S: 3.40, SCH40S: 6.55, SCH80S: 9.53}
+  150: {SCH5S: 2.77, SCH10S: 3.40, SCH40S: 7.11, SCH80S: 10.97}
+  200: {SCH5S: 3.40, SCH10S: 3.76, SCH40S: 8.18, SCH80S: 12.70}
+  250: {SCH5S: 3.96, SCH10S: 4.19, SCH40S: 9.27, SCH80S: 15.09}
+  300: {SCH5S: 4.55, SCH10S: 4.78, SCH40S: 10.31, SCH80S: 17.48}

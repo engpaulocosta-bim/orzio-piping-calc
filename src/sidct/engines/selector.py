@@ -32,6 +32,8 @@ _PREFERRED_SCHEDULES_CARBON = ["SCH40", "STD", "SCH80", "XS", "SCH20", "SCH10"]
 _PREFERRED_SCHEDULES_STAINLESS = ["SCH40S", "SCH10S", "SCH5S", "SCH80S"]
 _PREFERRED_SCHEDULES_PVC_EU = ["PN16", "PN10"]
 _PREFERRED_SCHEDULES_PVC_US = ["SCH40", "SCH80"]
+_PREFERRED_SCHEDULES_PE_EU = ["SDR17", "SDR13.6", "SDR11"]
+_PREFERRED_SCHEDULES_PPR_EU = ["SDR11", "SDR7.4", "SDR6"]
 
 
 def _preferred_schedule(material: str, catalog: str) -> list[str]:
@@ -40,6 +42,10 @@ def _preferred_schedule(material: str, catalog: str) -> list[str]:
         return _PREFERRED_SCHEDULES_PVC_EU
     if "PVC_ASTMD1785" in catalog.upper():
         return _PREFERRED_SCHEDULES_PVC_US
+    if "PE_EN12201" in catalog.upper():
+        return _PREFERRED_SCHEDULES_PE_EU
+    if "PPR_ISO15874" in catalog.upper():
+        return _PREFERRED_SCHEDULES_PPR_EU
     is_ss = any(k in mat for k in ("316", "304", "tp3", "inox"))
     if is_ss or "19M" in catalog.upper():
         return _PREFERRED_SCHEDULES_STAINLESS

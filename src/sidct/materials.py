@@ -32,6 +32,24 @@ WATER_SERVICES = (
     "rainwater",
 )
 
+COLD_WATER_SERVICES = (
+    "potable_water",
+    "service_water",
+    "osmotized_water",
+    "chilled_water",
+    "condenser_water",
+    "sanitary_drainage",
+    "rainwater",
+)
+
+HOT_WATER_SERVICES = (
+    "potable_water",
+    "service_water",
+    "osmotized_water",
+    "chilled_water",
+    "condenser_water",
+)
+
 METAL_SERVICES = (
     "compressed_air",
     "natural_gas",
@@ -114,7 +132,7 @@ MATERIAL_SPECS: dict[str, MaterialSpec] = {
         limitations=(
             "PVC-U dataset is for water and drainage services only.",
             "Do not use for compressed air, natural gas, vacuum or fire-water approval.",
-            "Temperature derating must be checked for final design above 20 C.",
+            "Temperature derating must be checked for final design above 20 °C.",
         ),
     ),
     "PVCU_US": MaterialSpec(
@@ -135,6 +153,46 @@ MATERIAL_SPECS: dict[str, MaterialSpec] = {
             "Do not use for compressed air, natural gas, vacuum or fire-water approval.",
         ),
     ),
+    # ─── PE 100 — Polyethylene PE100 / EN 12201 (EU) ────────────────────────────
+    "PE100_EU": MaterialSpec(
+        key="PE100_EU",
+        family="pe",
+        grade="PE 100 EN 12201-2 / ISO 4427-2",
+        region="EU",
+        dimensional_catalog="PE_EN12201",
+        roughness_m=0.007e-3,
+        density_kgm3=960.0,
+        temperature_min_c=-20.0,
+        temperature_max_c=40.0,
+        pressure_rating_bar=None,  # depends on SDR series
+        service_allowlist=COLD_WATER_SERVICES,
+        limitations=(
+            "PE100 pressure rating depends on SDR series and temperature (MRS = 10 MPa @ 20 °C).",
+            "Long-term pressure rating must apply derating factors for T > 20 °C.",
+            "Do not use for compressed air, natural gas (buried only with specific approval), vacuum or fire-water.",
+            "Fusion/butt-welded joints required; mechanical joints only to EN 12201-3.",
+        ),
+    ),
+    # ─── PP-R Class C — Polypropylene random copolymer / ISO 15874 (EU) ─────────
+    "PPRC_EU": MaterialSpec(
+        key="PPRC_EU",
+        family="pp",
+        grade="PP-R Type 3 (Class C) ISO 15874-2",
+        region="EU",
+        dimensional_catalog="PPR_ISO15874",
+        roughness_m=0.007e-3,
+        density_kgm3=900.0,
+        temperature_min_c=0.0,
+        temperature_max_c=70.0,
+        pressure_rating_bar=None,  # depends on SDR series
+        service_allowlist=HOT_WATER_SERVICES,
+        limitations=(
+            "PP-R pressure rating depends on SDR series and operating temperature.",
+            "Long-term pressure rating per ISO 15874 (MRS = 8 MPa @ 20 °C for Class C).",
+            "Temperature derating is significant above 50 °C; verify manufacturer tables.",
+            "Do not use for compressed air, natural gas, vacuum or drainage without project approval.",
+        ),
+    ),
 }
 
 ALIASES: dict[str, str] = {
@@ -151,12 +209,28 @@ ALIASES: dict[str, str] = {
     "316": "A312TP316",
     "316L": "A312TP316",
     "A312TP316": "A312TP316",
+    # PVC-U
     "PVC": "PVCU_EU",
     "PVCU": "PVCU_EU",
     "PVC-U": "PVCU_EU",
     "PVCUEU": "PVCU_EU",
     "PVCUS": "PVCU_US",
     "PVCUUS": "PVCU_US",
+    # PE100
+    "PE": "PE100_EU",
+    "PE100": "PE100_EU",
+    "PE-100": "PE100_EU",
+    "PE100EU": "PE100_EU",
+    "PE80": "PE100_EU",  # conservative: use PE100 spec, note in limitations
+    "HDPE": "PE100_EU",
+    "PEAD": "PE100_EU",
+    # PP-R
+    "PPR": "PPRC_EU",
+    "PP-R": "PPRC_EU",
+    "PPRC": "PPRC_EU",
+    "PP-RC": "PPRC_EU",
+    "PPRCEU": "PPRC_EU",
+    "PPRTYPE3": "PPRC_EU",
 }
 
 
@@ -181,6 +255,10 @@ def normalize_material_key(material: str, jurisdiction: str = "EU") -> str:
         return "PVCU_US"
     if compact in ("PVC", "PVCU") and region in {"BRAZIL", "INTERNATIONAL"}:
         return "PVCU_UNSUPPORTED"
+    if compact in ("PE", "PE100", "PE80", "HDPE", "PEAD") and region != "EU":
+        return "PE100_UNSUPPORTED"
+    if compact in ("PPR", "PPRC") and region != "EU":
+        return "PPR_UNSUPPORTED"
     return ALIASES.get(raw, ALIASES.get(compact, compact))
 
 
@@ -192,6 +270,12 @@ def is_pvc_material(material: str) -> bool:
     return normalize_material_key(material).startswith("PVCU")
 
 
+def is_plastic_material(material: str) -> bool:
+    """True for PVC-U, PE100 and PP-R family materials."""
+    key = normalize_material_key(material)
+    return key.startswith(("PVCU", "PE100", "PPRC"))
+
+
 def catalog_region(catalog: str) -> str:
     normalized = (catalog or "").upper().replace(".", "").replace("-", "").replace("_", "")
     if normalized in {"PVCEN1452", "EN1452", "PVCUEN1452"}:
@@ -200,6 +284,10 @@ def catalog_region(catalog: str) -> str:
         return "US"
     if normalized in {"NBR5580"}:
         return "BRAZIL"
+    if normalized in {"PEEN12201", "EN12201", "ISO4427"}:
+        return "EU"
+    if normalized in {"PPRISO15874", "ISO15874"}:
+        return "EU"
     if normalized in {"ASMEB3610M", "B3610M", "B36_10M", "ASMEB3619M", "B3619M", "B36_19M"}:
         return "GLOBAL"
     return "UNKNOWN"
@@ -210,6 +298,10 @@ def available_catalogs_for_material(material: str, jurisdiction: str = "EU") -> 
     if spec is None:
         return []
     if spec.family == "pvc":
+        return [spec.dimensional_catalog]
+    if spec.family == "pe":
+        return [spec.dimensional_catalog]
+    if spec.family == "pp":
         return [spec.dimensional_catalog]
     if spec.family == "stainless_steel":
         return ["ASME_B36_19M"]
@@ -237,21 +329,28 @@ def validate_catalog_for_material(material: str, catalog: str, jurisdiction: str
             f"PVC-U catalog for jurisdiction '{jurisdiction}' is not implemented in SIDCT. "
             "Use a project-approved local catalog or choose a supported region/material.",
         )
+    if material_key in {"PE100_UNSUPPORTED", "PPR_UNSUPPORTED"}:
+        family = "PE100" if material_key == "PE100_UNSUPPORTED" else "PP-R"
+        raise DatasetMissingError(
+            f"{family}:{region}",
+            f"{family} catalog for jurisdiction '{jurisdiction}' is not implemented in SIDCT. "
+            "Choose EU jurisdiction/material or provide a project-approved local catalog.",
+        )
     if spec is None:
         return warnings
 
     if cat_region == "UNKNOWN":
         return warnings
-    if spec.family == "pvc" and cat_region == "GLOBAL":
+    if spec.family in {"pvc", "pe", "pp"} and cat_region == "GLOBAL":
         warnings.append(
-            f"Material PVC selected with steel catalog '{catalog}'; SIDCT will use "
+            f"Material {spec.grade} selected with steel catalog '{catalog}'; SIDCT will use "
             f"'{spec.dimensional_catalog}' for jurisdiction '{jurisdiction}' during calculation."
         )
         return warnings
-    if spec.family == "pvc" and cat_region != spec.region:
+    if spec.family in {"pvc", "pe", "pp"} and cat_region != spec.region:
         raise ValidationError(
             f"Catalog '{catalog}' belongs to region '{cat_region}' and cannot be used with "
-            f"PVC material '{material}' in jurisdiction '{jurisdiction}'.",
+            f"material '{material}' in jurisdiction '{jurisdiction}'.",
             "dimensional_catalog",
         )
     if cat_region != "GLOBAL" and cat_region != region:
@@ -279,9 +378,9 @@ def resolve_catalog(material: str, requested_catalog: str, jurisdiction: str = "
         return requested_catalog, warnings
 
     requested = requested_catalog.upper()
-    if spec.family == "pvc" and requested in {"ASME_B36_10M", "ASME_B36_19M", "B36_10M", "B36_19M"}:
+    if spec.family in {"pvc", "pe", "pp"} and requested in {"ASME_B36_10M", "ASME_B36_19M", "B36_10M", "B36_19M"}:
         warnings.append(
-            f"Material PVC selected with steel catalog '{requested_catalog}'. "
+            f"Material {spec.grade} selected with steel catalog '{requested_catalog}'. "
             f"Using '{spec.dimensional_catalog}' for jurisdiction {jurisdiction}."
         )
         return spec.dimensional_catalog, warnings
@@ -298,10 +397,17 @@ def validate_material_application(
 ) -> list[str]:
     spec = get_material_spec(material, jurisdiction)
     if spec is None:
-        if normalize_material_key(material, jurisdiction) == "PVCU_UNSUPPORTED":
+        material_key = normalize_material_key(material, jurisdiction)
+        if material_key == "PVCU_UNSUPPORTED":
             raise DatasetMissingError(
                 f"PVC-U:{normalize_jurisdiction(jurisdiction)}",
                 f"PVC-U catalog for jurisdiction '{jurisdiction}' is not implemented in SIDCT.",
+            )
+        if material_key in {"PE100_UNSUPPORTED", "PPR_UNSUPPORTED"}:
+            family = "PE100" if material_key == "PE100_UNSUPPORTED" else "PP-R"
+            raise DatasetMissingError(
+                f"{family}:{normalize_jurisdiction(jurisdiction)}",
+                f"{family} catalog for jurisdiction '{jurisdiction}' is not implemented in SIDCT.",
             )
         return []
 
@@ -332,6 +438,16 @@ def validate_material_application(
         warnings.append(
             "PVC pressure rating requires temperature derating above 20 C; "
             "verify manufacturer table for final design."
+        )
+    if spec.family == "pe" and T_design_c > 20.0:
+        warnings.append(
+            "PE100 pressure rating requires temperature derating above 20 C; "
+            "verify EN 12201/ISO 4427 and manufacturer SDR/PN table for final design."
+        )
+    if spec.family == "pp" and T_design_c > 50.0:
+        warnings.append(
+            "PP-R pressure rating is strongly temperature-dependent above 50 C; "
+            "verify ISO 15874 class and manufacturer regression tables."
         )
     warnings.extend(spec.limitations)
     return warnings

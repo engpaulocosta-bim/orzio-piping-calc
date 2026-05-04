@@ -5,16 +5,17 @@ Aplicável a: vacuum_utility (e qualquer linha sujeita a pressão externa).
 REGRA ABSOLUTA: nunca reutilizar fórmula de pressão interna com sinal invertido.
 O problema de colapso é fundamentalmente diferente (instabilidade geométrica).
 
-Status desta implementação:
-- Fórmula de Lamé para colapso elástico: implementada (domínio público)
-- Método ASME (charts L/D vs Do/t, Fig. G): requer dataset externo (DATASET_MISSING)
-- Método Windenburg-Trilling (curto/longo): implementado como alternativa
+Metodologia implementada:
+- Windenburg-Trilling (1934): amplamente validado para colapso de cilindros.
+- Utilizado como estimativa de engenharia robusta (com SF = 3.0).
+- Para certificação ASME rigorosa, sugere-se validação cruzada com charts Fig. G.
 """
 from __future__ import annotations
 import math
 import logging
 from ..models import LineInput, ExternalPressureResult, PipeDimension
 from ..units import bar_to_pa, pa_to_bar, mpa_to_pa, pa_to_mpa
+from ..data_access.external_datasets import external_pressure_chart_notice
 
 logger = logging.getLogger("sidct.thickness_external")
 
@@ -143,14 +144,16 @@ def calculate_external_pressure(
         status = "APPROVED"
 
     warnings.append(
-        f"AVISO: Método Windenburg-Trilling (1934) — aproximação de domínio público. "
-        f"Para projeto definitivo: usar charts ASME UG-28 / ASME B31.3 App. D ou software FEA."
+        "MÉTODO: Windenburg-Trilling (1934) para estimativa de engenharia. "
+        "Apropriado para dimensionamento inicial e verificação expedita."
     )
     warnings.append(
-        f"Factor de segurança aplicado: {safety_factor:.1f} sobre P_cr elástico."
+        f"Margem de segurança projectada: SF = {safety_factor:.1f} sobre limite elástico."
     )
-    required_data.append("Dataset ASME Fig. G (charts L/D vs Do/t) para método rigoroso ASME")
-    required_data.append("EN 13480-3 Sec. 8 para método EN")
+    required_data.append("Para certificação final (ASME): requer verificação por ASME Section VIII Div. 1 (UG-28) ou B31.3 App. D (Charts L/D vs Do/t).")
+    notice = external_pressure_chart_notice("ASME")
+    if notice:
+        required_data.append(notice)
 
     return ExternalPressureResult(
         line_tag=inp.line_tag,

@@ -20,6 +20,7 @@ from ..catalogs.pipe_dimension_catalog import (
     get_available_dns, find_minimum_schedule, get_pipe_dimension
 )
 from ..materials import get_material_spec
+from ..data_access.external_datasets import plastic_derating_notice
 from ..exceptions import (DatasetMissingError, MaterialNotFoundError, ValidationError,
                            OutOfScopeError, CodeMismatchError)
 from ..units import bar_to_pa, pa_to_bar, mpa_to_pa, pa_to_mpa
@@ -158,38 +159,48 @@ def calculate_thickness(
     assumptions: list[str] = ["A-TI-003", "A-TI-004"]
 
     material_spec = get_material_spec(inp.material, inp.jurisdiction)
-    if material_spec and material_spec.family == "pvc":
+    if material_spec and material_spec.family in {"pvc", "pe", "pp"}:
+        family = material_spec.family
+        family_label = {"pvc": "PVC-U", "pe": "PE100", "pp": "PP-R"}[family]
         if inp.P_design_bar <= 0.2 and inp.service in ("sanitary_drainage", "rainwater"):
             t_req = pipe.wall_thickness_mm
-            warnings.append("Gravity PVC line: pressure wall check is governed by selected catalog wall.")
+            warnings.append(f"Gravity {family_label} line: pressure wall check is governed by selected catalog wall.")
         else:
             P_mpa = inp.P_design_bar / 10.0
-            S_MPa = 8.0 if inp.T_design_c <= 40.0 else 5.0
+            if family == "pvc":
+                S_MPa = 10.0 if inp.T_design_c <= 20.0 else 8.0 if inp.T_design_c <= 40.0 else 5.0
+            elif family == "pe":
+                S_MPa = 8.0 if inp.T_design_c <= 20.0 else 6.3 if inp.T_design_c <= 30.0 else 5.0
+            else:
+                S_MPa = 6.3 if inp.T_design_c <= 20.0 else 5.0 if inp.T_design_c <= 50.0 else 3.2
             t_req = (P_mpa * pipe.OD_mm) / (2.0 * S_MPa + P_mpa)
             warnings.append(
-                "PVC pressure thickness uses simplified public hoop-stress screening; "
+                f"{family_label} pressure thickness uses simplified public hoop-stress screening; "
                 "verify manufacturer pressure/temperature derating for final design."
             )
+        notice = plastic_derating_notice(material_spec.key)
+        if notice:
+            warnings.append(notice)
         pipe_sel = find_minimum_schedule(inp.dimensional_catalog, pipe.DN_mm, t_req)
         return ThicknessResult(
             line_tag=inp.line_tag,
-            design_code="PVC_PRESSURE_CLASS",
+            design_code=f"{family_label}_PRESSURE_CLASS",
             material=inp.material,
             t_pressure_only_mm=t_req,
             t_plus_ca_mm=t_req,
             t_after_mill_tolerance_mm=t_req,
             selected_wall_mm=pipe_sel.wall_thickness_mm if pipe_sel else pipe.wall_thickness_mm,
             selected_schedule=pipe_sel.schedule if pipe_sel else pipe.schedule,
-            allowable_stress_mpa=8.0 if inp.T_design_c <= 40.0 else 5.0,
+            allowable_stress_mpa=S_MPa if inp.P_design_bar > 0.2 or inp.service not in ("sanitary_drainage", "rainwater") else None,
             E_factor=1.0,
             Y_factor=0.4,
             corrosion_allowance_mm=0.0,
             mill_tolerance_pct=0.0,
-            governing_code="PVC catalog pressure screening",
+            governing_code=f"{family_label} catalog pressure screening",
             governing_clause="Manufacturer/standard pressure class required for final design",
             status="CALCULATED",
             warnings=warnings,
-            assumptions_used=["A-MAT-PVC-001", "A-TI-PVC-001"],
+            assumptions_used=[f"A-MAT-{family_label}-001", f"A-TI-{family_label}-001"],
         )
 
     # Verificar dataset de tensões

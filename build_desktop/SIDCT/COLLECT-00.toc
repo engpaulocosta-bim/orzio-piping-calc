@@ -866,6 +866,50 @@
    'C:\\Users\\Paulo '
    'Costa\\AppData\\Local\\Programs\\Python\\Python311\\Lib\\site-packages\\charset_normalizer\\md.cp311-win_amd64.pyd',
    'EXTENSION'),
+  ('data\\catalogs\\asme_b36_10m.yaml',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\catalogs\\asme_b36_10m.yaml',
+   'DATA'),
+  ('data\\catalogs\\asme_b36_19m.yaml',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\catalogs\\asme_b36_19m.yaml',
+   'DATA'),
+  ('data\\catalogs\\pe_en12201.yaml',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\catalogs\\pe_en12201.yaml',
+   'DATA'),
+  ('data\\catalogs\\ppr_iso15874.yaml',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\catalogs\\ppr_iso15874.yaml',
+   'DATA'),
+  ('data\\catalogs\\pvc_astmd1785.yaml',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\catalogs\\pvc_astmd1785.yaml',
+   'DATA'),
+  ('data\\catalogs\\pvc_en1452.yaml',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\catalogs\\pvc_en1452.yaml',
+   'DATA'),
+  ('data\\templates\\batch_template.csv',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\templates\\batch_template.csv',
+   'DATA'),
+  ('data\\templates\\external_pressure_charts_template.yaml',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\templates\\external_pressure_charts_template.yaml',
+   'DATA'),
+  ('data\\templates\\material_stress_template.csv',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\templates\\material_stress_template.csv',
+   'DATA'),
+  ('data\\templates\\nbr5580_catalog_template.csv',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\templates\\nbr5580_catalog_template.csv',
+   'DATA'),
+  ('data\\templates\\plastic_derating_template.yaml',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\data\\templates\\plastic_derating_template.yaml',
+   'DATA'),
   ('form_behavior_matrix.yaml',
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
    'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\form_behavior_matrix.yaml',

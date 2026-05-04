@@ -51,6 +51,8 @@ class DimensionalCatalog(str, Enum):
     NBR_5580 = "NBR_5580"
     PVC_EN1452 = "PVC_EN1452"
     PVC_ASTMD1785 = "PVC_ASTMD1785"
+    PE_EN12201 = "PE_EN12201"
+    PPR_ISO15874 = "PPR_ISO15874"
 
 
 class MaterialFamily(str, Enum):
@@ -59,6 +61,8 @@ class MaterialFamily(str, Enum):
     STAINLESS_STEEL = "stainless_steel"
     COPPER = "copper"
     PVC = "pvc"
+    PE = "pe"
+    PP = "pp"
     HDPE = "hdpe"
 
 

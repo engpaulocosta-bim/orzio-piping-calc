@@ -215,3 +215,59 @@ TOTAL: 73 passed in 2.17s
 - Smoke test desktop adaptativo: `desktop adaptive UI smoke OK`.
 - `pytest -q`: 92/92 passed.
 - Builds em `dist_desktop_light` e `dist_desktop_adaptive` falharam ao tentar remover pastas bloqueadas pelo OneDrive; build final em `dist_desktop_adaptive_v2` concluida com sucesso.
+
+---
+## Catalog/Product Cleanup Run - 2026-05-04
+
+### Auditoria de lacunas restantes
+- Status: COMPLETE
+- `AUDIT_REPORT.md` relido e comparado com o estado atual do produto.
+- Confirmado que as lacunas criticas originais de UI desktop, projeto persistente, Save/Open, exportacao, batch, matriz de sistemas e packaging ja tinham sido parcialmente fechadas.
+- Lacuna remanescente encontrada: PE100/PP-R ja estavam iniciados em enums/catalogos, mas ainda faltava integracao completa em espessura, selecao de schedules, validacao regional, matriz calculation-ready e packaging dos catalogos externos.
+
+### Implementacao
+- Status: IMPLEMENTED
+- PE100/HDPE e PP-R agora resolvem catalogos `PE_EN12201` e `PPR_ISO15874`.
+- Espessura interna ganhou triagem simplificada para PVC-U, PE100 e PP-R com avisos explicitos de derating/fabricante.
+- Suportes passam a usar modulo elastico indicativo por familia plastica.
+- Streamlit legado corrigido para remover seletor duplicado de jurisdicao e listar catalogos PE/PPR.
+- Build desktop inclui `data/catalogs`.
+
+### Limpeza
+- Status: COMPLETE
+- Removidos caches Python, `.pytest_cache`, `.coverage`, logs locais e builds antigas/obsoletas.
+- Criado `.gitignore` para impedir recorrencia de caches, logs, virtualenvs e builds geradas.
+
+### Packaging e launcher
+- Status: COMPLETE
+- Build final gerada em `dist_desktop_adaptive_v6/SIDCT`.
+- `Start SIDCT.bat` passa a priorizar `dist_desktop_adaptive_v6/SIDCT/SIDCT.exe`.
+- Smoke launcher: log confirmou `Using dist_desktop_adaptive_v6\SIDCT\SIDCT.exe`; processo fechado apos verificacao.
+
+### Verificacao
+- `pytest -q -p no:cacheprovider` com `PYTHONDONTWRITEBYTECODE=1`: 102/102 passed.
+- Verificado que `dist_desktop_adaptive_v6/SIDCT/_internal/data/catalogs` contem ASME, PVC, PE100 e PP-R YAML.
+
+---
+## Product Completion Run - 2026-05-04
+
+### Workflow de projeto
+- Status: IMPLEMENTED
+- Importacao XLSX testada no workflow desktop, mantendo CSV.
+- Export XLSX expandido com folhas `SIDCT Results`, `Line Inputs` e `Audit`.
+- Adicionado relatorio PDF multi-linha de projeto em `src/sidct/reports/project_pdf.py`.
+
+### UX desktop
+- Status: IMPLEMENTED
+- Menu de projetos recentes persistido por `QSettings`.
+- Menu About/Sobre com escopo e limitacoes tecnicas.
+- Exportacao `Project PDF` adicionada ao menu Export.
+
+### Datasets externos
+- Status: IMPLEMENTED
+- Adicionado `src/sidct/data_access/external_datasets.py`.
+- Adicionados templates `data/templates/plastic_derating_template.yaml` e `data/templates/external_pressure_charts_template.yaml`.
+- Calculos plasticos e pressao externa emitem avisos auditaveis quando datasets de fabricante/charts nao estao fornecidos.
+
+### Verificacao
+- `pytest -q -p no:cacheprovider` com `PYTHONDONTWRITEBYTECODE=1`: 105/105 passed.

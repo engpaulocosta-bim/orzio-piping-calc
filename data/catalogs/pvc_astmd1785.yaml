@@ -1,0 +1,59 @@
+# PVC-U ASTM D1785 — Schedule 40, 80, and 120 (PVC)
+# OD follows iron pipe size (IPS) dimensions.
+# Source: publicly reproducible from ASTM D1785.
+# SIDCT catalog key: PVC_ASTMD1785
+# Version: 2025-01
+catalog_key: PVC_ASTMD1785
+standard: ASTM D1785
+material_family: pvc
+density_kgm3: 1400.0
+
+# OD = nominal OD in mm
+od:
+  15:  21.34
+  20:  26.67
+  25:  33.40
+  32:  42.16
+  40:  48.26
+  50:  60.33
+  65:  73.03
+  80:  88.90
+  100: 114.30
+  150: 168.28
+  200: 219.08
+  250: 273.05
+  300: 323.85
+
+nps:
+  15:  0.5
+  20:  0.75
+  25:  1.0
+  32:  1.25
+  40:  1.5
+  50:  2.0
+  65:  2.5
+  80:  3.0
+  100: 4.0
+  150: 6.0
+  200: 8.0
+  250: 10.0
+  300: 12.0
+
+walls:
+  15:  {SCH40: 2.77, SCH80: 3.73}
+  20:  {SCH40: 2.87, SCH80: 3.91}
+  25:  {SCH40: 3.38, SCH80: 4.55}
+  32:  {SCH40: 3.56, SCH80: 4.85}
+  40:  {SCH40: 3.68, SCH80: 5.08}
+  50:  {SCH40: 3.91, SCH80: 5.54}
+  65:  {SCH40: 5.16, SCH80: 7.01}
+  80:  {SCH40: 5.49, SCH80: 7.62}
+  100: {SCH40: 6.02, SCH80: 8.56}
+  150: {SCH40: 7.11, SCH80: 10.97}
+  200: {SCH40: 8.18, SCH80: 12.70}
+  250: {SCH40: 9.27, SCH80: 15.09}
+  300: {SCH40: 10.31, SCH80: 17.48}
+
+notes: >
+  ASTM schedule pressure rating varies with DN and temperature.
+  Do not use for compressed air, natural gas, vacuum or fire-water approval.

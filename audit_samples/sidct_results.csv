@@ -1,0 +1,2 @@
+project_name,line_tag,service,material,catalog,DN_governing_mm,velocity_ms,dp_total_bar,selected_schedule,selected_wall_mm,checker_status,governing_issue,calculated_at,schema_version,route_name
+SIDCT Project,L-001,sanitary_drainage,PVC,PVC_EN1452,40.0,0.6161359456268036,,PN10,3.7,APPROVED,,2026-05-04T11:04:49+00:00,1.1,Route A

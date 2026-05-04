@@ -29,10 +29,10 @@ systems:
           - material_id: ppr_potable
             display_name: "PPR potable grade"
             sidct_material: "PPR"
-            calculation_ready: false
+            calculation_ready: true
             contexts: ["building services", "hot and cold water distribution"]
             limitations: ["thermal expansion", "support spacing", "oxygen diffusion/version suitability"]
-            warnings: ["Dataset not implemented; use supplier pressure-temperature tables."]
+            warnings: ["SIDCT uses ISO 15874 SDR dimensions and simplified pressure screening; verify supplier pressure-temperature tables and potable approvals."]
             selection_rank: 2
           - material_id: copper
             display_name: "Copper"
@@ -46,10 +46,10 @@ systems:
           - material_id: hdpe_potable
             display_name: "HDPE/PEAD potable grade"
             sidct_material: "HDPE"
-            calculation_ready: false
+            calculation_ready: true
             contexts: ["buried service entry", "external distribution", "utility yards"]
             limitations: ["not preferred for exposed high-temperature indoor plant rooms", "thermal movement and UV protection required"]
-            warnings: ["Dataset not implemented; verify potable certification and pressure class."]
+            warnings: ["SIDCT uses PE100 EN 12201 dimensions and simplified pressure screening; verify potable certification, SDR/PN and installation class."]
             selection_rank: 4
           - material_id: pvc_u_potable
             display_name: "PVC-U potable grade"
@@ -210,10 +210,10 @@ systems:
           - material_id: hdpe_service
             display_name: "HDPE/PEAD"
             sidct_material: "HDPE"
-            calculation_ready: false
+            calculation_ready: true
             contexts: ["buried external networks", "utility yards", "corrosive soil"]
             limitations: ["temperature/pressure derating", "fusion quality", "fire exposure"]
-            warnings: ["Dataset not implemented; verify SDR/PN and installation class."]
+            warnings: ["SIDCT uses PE100 EN 12201 dimensions and simplified pressure screening; verify SDR/PN, fusion QA and installation class."]
             selection_rank: 2
         allowed_materials:
           - material_id: stainless_steel_316
@@ -244,10 +244,10 @@ systems:
           - material_id: ppr
             display_name: "PPR"
             sidct_material: "PPR"
-            calculation_ready: false
+            calculation_ready: true
             contexts: ["building/service distribution"]
             limitations: ["thermal expansion and pressure-temperature rating"]
-            warnings: ["Dataset not implemented."]
+            warnings: ["SIDCT uses ISO 15874 SDR dimensions and simplified pressure screening; verify supplier pressure-temperature tables."]
             selection_rank: 5
         blocked_materials: []
 

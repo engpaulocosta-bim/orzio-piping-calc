@@ -4,9 +4,17 @@ Dados reproduzíveis de domínio público.
 Fonte: ASME B36.10M-2015 e ASME B36.19M-2004(R2015).
 """
 from __future__ import annotations
+import logging
+from pathlib import Path
+import sys
 from typing import Optional
+
+import yaml
+
 from ..models import PipeDimension
 from ..exceptions import DatasetMissingError, ValidationError, CodeMismatchError
+
+logger = logging.getLogger("sidct.catalogs")
 
 # ─── ASME B36.10M — Aço Carbono ────────────────────────────────────────────────
 # Formato: (DN_mm, NPS_inch, OD_mm): {schedule: wall_mm}
@@ -188,16 +196,133 @@ PVC_ASTMD1785_WALLS: dict[float, dict[str, float]] = {
 }
 
 
+# ─── PE 100 — EN 12201-2 / ISO 4427-2 — SDR series ─────────────────────────────
+# OD per ISO 161-1 d-series (DN = OD nominal in mm)
+# Wall thickness = OD / SDR (rounded up per standard)
+# SDR17 ≈ PN10, SDR13.6 ≈ PN12.5, SDR11 ≈ PN16 (at 20°C for PE100)
+PE_DENSITY_KGM3 = 960.0
+
+PE_EN12201_OD: dict[float, float] = {
+    20: 20.0, 25: 25.0, 32: 32.0, 40: 40.0, 50: 50.0, 63: 63.0,
+    75: 75.0, 90: 90.0, 110: 110.0, 125: 125.0, 140: 140.0,
+    160: 160.0, 180: 180.0, 200: 200.0, 225: 225.0, 250: 250.0,
+    280: 280.0, 315: 315.0, 355: 355.0, 400: 400.0, 450: 450.0,
+    500: 500.0, 560: 560.0, 630: 630.0,
+}
+
+PE_EN12201_NPS: dict[float, float] = {dn: od / 25.4 for dn, od in PE_EN12201_OD.items()}
+
+# Wall = round(OD / SDR, 1) per EN 12201 — "e" values from standard tables
+PE_EN12201_WALLS: dict[float, dict[str, float]] = {
+    20:  {"SDR17": 1.2, "SDR13.6": 1.5, "SDR11": 1.9},
+    25:  {"SDR17": 1.5, "SDR13.6": 1.9, "SDR11": 2.3},
+    32:  {"SDR17": 1.9, "SDR13.6": 2.4, "SDR11": 2.9},
+    40:  {"SDR17": 2.4, "SDR13.6": 3.0, "SDR11": 3.7},
+    50:  {"SDR17": 3.0, "SDR13.6": 3.7, "SDR11": 4.6},
+    63:  {"SDR17": 3.8, "SDR13.6": 4.7, "SDR11": 5.8},
+    75:  {"SDR17": 4.5, "SDR13.6": 5.6, "SDR11": 6.8},
+    90:  {"SDR17": 5.4, "SDR13.6": 6.7, "SDR11": 8.2},
+    110: {"SDR17": 6.6, "SDR13.6": 8.1, "SDR11": 10.0},
+    125: {"SDR17": 7.4, "SDR13.6": 9.2, "SDR11": 11.4},
+    140: {"SDR17": 8.3, "SDR13.6": 10.3, "SDR11": 12.7},
+    160: {"SDR17": 9.5, "SDR13.6": 11.8, "SDR11": 14.6},
+    180: {"SDR17": 10.7, "SDR13.6": 13.3, "SDR11": 16.4},
+    200: {"SDR17": 11.9, "SDR13.6": 14.7, "SDR11": 18.2},
+    225: {"SDR17": 13.4, "SDR13.6": 16.6, "SDR11": 20.5},
+    250: {"SDR17": 14.8, "SDR13.6": 18.4, "SDR11": 22.7},
+    280: {"SDR17": 16.6, "SDR13.6": 20.6, "SDR11": 25.4},
+    315: {"SDR17": 18.7, "SDR13.6": 23.2, "SDR11": 28.6},
+    355: {"SDR17": 21.1, "SDR13.6": 26.1, "SDR11": 32.2},
+    400: {"SDR17": 23.7, "SDR13.6": 29.4, "SDR11": 36.3},
+    450: {"SDR17": 26.7, "SDR13.6": 33.1, "SDR11": 40.9},
+    500: {"SDR17": 29.7, "SDR13.6": 36.8, "SDR11": 45.4},
+    560: {"SDR17": 33.2, "SDR13.6": 41.2, "SDR11": 50.8},
+    630: {"SDR17": 37.4, "SDR13.6": 46.3, "SDR11": 57.2},
+}
+
+# ─── PP-R — ISO 15874-2 / Class C — SDR series ────────────────────────────
+# OD per ISO 161-1 (same series as PE) — common PP-R range DN15-DN110
+# SDR11 ≈ PN10@70°C, SDR7.4 ≈ PN16@70°C, SDR6 ≈ PN20@70°C for Class C
+PPR_DENSITY_KGM3 = 900.0
+
+PPR_ISO15874_OD: dict[float, float] = {
+    15: 20.0, 20: 25.0, 25: 32.0, 32: 40.0, 40: 50.0, 50: 63.0,
+    65: 75.0, 80: 90.0, 100: 110.0, 110: 125.0,
+}
+
+PPR_ISO15874_NPS: dict[float, float] = {dn: od / 25.4 for dn, od in PPR_ISO15874_OD.items()}
+
+PPR_ISO15874_WALLS: dict[float, dict[str, float]] = {
+    15:  {"SDR11": 1.9, "SDR7.4": 2.8, "SDR6": 3.4},
+    20:  {"SDR11": 2.3, "SDR7.4": 3.5, "SDR6": 4.2},
+    25:  {"SDR11": 2.9, "SDR7.4": 4.4, "SDR6": 5.4},
+    32:  {"SDR11": 3.7, "SDR7.4": 5.5, "SDR6": 6.7},
+    40:  {"SDR11": 4.6, "SDR7.4": 6.9, "SDR6": 8.4},
+    50:  {"SDR11": 5.8, "SDR7.4": 8.6, "SDR6": 10.5},
+    65:  {"SDR11": 6.8, "SDR7.4": 10.2, "SDR6": 12.5},
+    80:  {"SDR11": 8.2, "SDR7.4": 12.3, "SDR6": 15.0},
+    100: {"SDR11": 10.0, "SDR7.4": 15.1, "SDR6": 18.3},
+    110: {"SDR11": 11.4, "SDR7.4": 17.1, "SDR6": 20.8},
+}
+
+
+def _load_catalog_yaml(catalog_key: str) -> tuple[dict[float, dict[str, float]], dict[float, float], dict[float, float], str, float] | None:
+    """Attempt to load a catalog from its external YAML file."""
+    root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[3]))
+    base_dir = root / "data" / "catalogs"
+    yaml_path = base_dir / f"{catalog_key.lower()}.yaml"
+    if not yaml_path.exists():
+        return None
+    try:
+        with yaml_path.open(encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        density = float(data.get("density_kgm3", 7850.0))
+        od_map = {float(k): float(v) for k, v in data.get("od", {}).items()}
+        nps_map = {float(k): float(v) for k, v in data.get("nps", {}).items()}
+        walls_map = {}
+        for dn, sch_dict in data.get("walls", {}).items():
+            walls_map[float(dn)] = {str(k): float(v) for k, v in sch_dict.items()}
+        return walls_map, od_map, nps_map, catalog_key, density
+    except Exception as exc:
+        logger.warning("Failed to load catalog %s from YAML: %s", catalog_key, exc)
+        return None
+
+
 def _catalog_maps(catalog: str) -> tuple[dict[float, dict[str, float]], dict[float, float], dict[float, float], str, float]:
     catalog_upper = catalog.upper().replace(".", "").replace("-", "").replace("_", "")
-    if catalog_upper in ("ASMEB3610M", "B3610M", "B36_10M"):
+    
+    # Map raw input to standard key
+    key_map = {
+        "ASMEB3610M": "ASME_B36_10M", "B3610M": "ASME_B36_10M", "B36_10M": "ASME_B36_10M",
+        "ASMEB3619M": "ASME_B36_19M", "B3619M": "ASME_B36_19M", "B36_19M": "ASME_B36_19M",
+        "PVCEN1452": "PVC_EN1452", "EN1452": "PVC_EN1452", "PVCUEN1452": "PVC_EN1452",
+        "PVCASTMD1785": "PVC_ASTMD1785", "ASTMD1785": "PVC_ASTMD1785", "PVCD1785": "PVC_ASTMD1785",
+        "PEEN12201": "PE_EN12201", "EN12201": "PE_EN12201", "PE_EN12201": "PE_EN12201", "ISO4427": "PE_EN12201",
+        "PPRISO15874": "PPR_ISO15874", "ISO15874": "PPR_ISO15874", "PPR_ISO15874": "PPR_ISO15874", "PPRC_EU": "PPR_ISO15874",
+    }
+    std_key = key_map.get(catalog_upper)
+    if not std_key:
+        raise DatasetMissingError(catalog, "Catalog not supported in this version")
+
+    # Try YAML first
+    yaml_data = _load_catalog_yaml(std_key)
+    if yaml_data:
+        return yaml_data
+
+    # Fallback to hardcoded
+    if std_key == "ASME_B36_10M":
         return B36_10M_WALLS, B36_10M_OD, B36_10M_NPS, "ASME_B36_10M", STEEL_DENSITY_KGM3
-    if catalog_upper in ("ASMEB3619M", "B3619M", "B36_19M"):
+    if std_key == "ASME_B36_19M":
         return B36_19M_WALLS, B36_19M_OD, B36_10M_NPS, "ASME_B36_19M", STEEL_DENSITY_KGM3
-    if catalog_upper in ("PVCEN1452", "EN1452", "PVCUEN1452"):
+    if std_key == "PVC_EN1452":
         return PVC_EN1452_WALLS, PVC_EN1452_OD, PVC_EN1452_NPS, "PVC_EN1452", PVC_DENSITY_KGM3
-    if catalog_upper in ("PVCASTMD1785", "ASTMD1785", "PVCD1785"):
+    if std_key == "PVC_ASTMD1785":
         return PVC_ASTMD1785_WALLS, PVC_ASTMD1785_OD, PVC_ASTMD1785_NPS, "PVC_ASTMD1785", PVC_DENSITY_KGM3
+    if std_key == "PE_EN12201":
+        return PE_EN12201_WALLS, PE_EN12201_OD, PE_EN12201_NPS, "PE_EN12201", PE_DENSITY_KGM3
+    if std_key == "PPR_ISO15874":
+        return PPR_ISO15874_WALLS, PPR_ISO15874_OD, PPR_ISO15874_NPS, "PPR_ISO15874", PPR_DENSITY_KGM3
+        
     raise DatasetMissingError(catalog, "Catalog not supported in this version")
 
 

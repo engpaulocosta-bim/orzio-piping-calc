@@ -13,6 +13,7 @@ from sidct.models import LineInput
 from sidct.project import create_default_project, load_project, save_project
 from sidct.reports.exports import export_project_csv, export_project_xlsx
 from sidct.reports.memorial_pdf import generate_pdf
+from sidct.reports.project_pdf import generate_project_pdf
 
 
 def _line(tag: str, material: str, catalog: str, jurisdiction: str = "EU") -> LineInput:
@@ -79,6 +80,30 @@ def test_pvc_water_calculation_uses_pvc_catalog():
     assert ctx.thickness_result.status == "CALCULATED"
 
 
+def test_pe100_water_calculation_uses_en12201_catalog():
+    inp = _line("PE-001", "HDPE", "ASME_B36_10M")
+    ctx = run_full_calculation(inp)
+
+    assert ctx.line_input.dimensional_catalog == "PE_EN12201"
+    assert ctx.hydraulic_result is not None
+    assert ctx.hydraulic_result.DN_governing_mm is not None
+    assert ctx.thickness_result is not None
+    assert ctx.thickness_result.status == "CALCULATED"
+    assert (ctx.thickness_result.selected_schedule or "").startswith("SDR")
+
+
+def test_ppr_water_calculation_uses_iso15874_catalog():
+    inp = _line("PPR-001", "PPR", "ASME_B36_10M")
+    ctx = run_full_calculation(inp)
+
+    assert ctx.line_input.dimensional_catalog == "PPR_ISO15874"
+    assert ctx.hydraulic_result is not None
+    assert ctx.hydraulic_result.DN_governing_mm is not None
+    assert ctx.thickness_result is not None
+    assert ctx.thickness_result.status == "CALCULATED"
+    assert (ctx.thickness_result.selected_schedule or "").startswith("SDR")
+
+
 def test_pvc_us_profile_uses_us_catalog_when_steel_catalog_was_requested():
     inp = _line("PVC-US-001", "PVC", "ASME_B36_10M", jurisdiction="US")
     ctx = run_full_calculation(inp)
@@ -107,6 +132,78 @@ def test_project_exports_and_pdf(tmp_path):
     assert csv_path.exists() and csv_path.read_text(encoding="utf-8").startswith("project_name")
     assert xlsx_path.exists() and xlsx_path.stat().st_size > 0
     assert pdf_path.exists() and pdf_path.stat().st_size > 0
+
+    from openpyxl import load_workbook
+    wb = load_workbook(xlsx_path)
+    assert {"SIDCT Results", "Line Inputs", "Audit", "Warnings"}.issubset(set(wb.sheetnames))
+    result_sheet = wb["SIDCT Results"]
+    headers = [cell.value for cell in result_sheet[1]]
+    values = [cell.value for cell in result_sheet[2]]
+    assert headers[:3] == ["Project", "Route", "Line Tag"]
+    assert headers[headers.index("Velocity [m/s]")] == "Velocity [m/s]"
+    assert isinstance(values[headers.index("Velocity [m/s]")], str)
+    assert len(values[headers.index("Velocity [m/s]")].split(".")[-1]) <= 3
+    assert result_sheet.freeze_panes == "A2"
+
+
+def test_gravity_exports_include_drainage_specific_results(tmp_path):
+    project = create_default_project("Drainage Export")
+    inp = LineInput(
+        project_name="Drainage Export",
+        line_tag="DR-001",
+        service="sanitary_drainage",
+        project_profile="glass_factory_industrial_eu",
+        jurisdiction="EU",
+        fluid_name="sanitary_drainage",
+        P_oper_bar=0.0,
+        T_oper_c=20.0,
+        P_design_bar=0.0,
+        T_design_c=40.0,
+        flow_rate=0.5,
+        flow_rate_basis="L/s",
+        line_length_m=10.0,
+        material="PVC",
+        dimensional_catalog="PVC_EN1452",
+        corrosion_allowance_mm=0.0,
+        slope_mm_m=15.0,
+    )
+    line = project.routes[0].add_line(inp)
+    ctx = project.calculate_line(line.line_id)
+    assert ctx.hydraulic_result.flow_depth_ratio is not None
+
+    csv_path = tmp_path / "drainage.csv"
+    xlsx_path = tmp_path / "drainage.xlsx"
+    pdf_path = tmp_path / "drainage.pdf"
+    export_project_csv(project, csv_path)
+    export_project_xlsx(project, xlsx_path)
+    pdf = generate_pdf(ctx, pdf_path)
+
+    csv_text = csv_path.read_text(encoding="utf-8")
+    assert "flow_depth_ratio" in csv_text
+    assert "slope_adequacy" in csv_text
+    assert ",N/A," in csv_text
+
+    from openpyxl import load_workbook
+    wb = load_workbook(xlsx_path, read_only=True)
+    headers = [cell.value for cell in wb["SIDCT Results"][1]]
+    assert "Flow Depth Ratio" in headers
+    assert "Slope Adequacy" in headers
+    assert "Self Cleansing OK" in headers
+    assert len(pdf) > 1000
+
+
+def test_project_multi_line_pdf(tmp_path):
+    project = create_default_project("Project Report")
+    line_a = project.routes[0].add_line(_line("CS-PDF", "A106 GrB", "ASME_B36_10M"))
+    line_b = project.routes[0].add_line(_line("PE-PDF", "HDPE", "ASME_B36_10M"))
+    project.calculate_line(line_a.line_id)
+    project.calculate_line(line_b.line_id)
+
+    pdf_path = tmp_path / "project.pdf"
+    pdf = generate_project_pdf(project, pdf_path)
+
+    assert len(pdf) > 1000
+    assert pdf_path.exists() and pdf_path.stat().st_size == len(pdf)
 
 
 def test_batch_import_still_runs():

@@ -157,10 +157,14 @@ def _option_compatible_with_region(option: PipeMaterialOption, region: str) -> b
     material_key = normalize_material_key(option.sidct_material, region)
     if material_key == "PVCU_UNSUPPORTED":
         return False
+    if material_key in {"PE100_UNSUPPORTED", "PPR_UNSUPPORTED"}:
+        return not option.calculation_ready
     if material_key == "PVCU_EU":
         return normalize_region(region) == "EU"
     if material_key == "PVCU_US":
         return normalize_region(region) == "US"
+    if material_key in {"PE100_EU", "PPRC_EU"}:
+        return normalize_region(region) == "EU"
     return True
 
 

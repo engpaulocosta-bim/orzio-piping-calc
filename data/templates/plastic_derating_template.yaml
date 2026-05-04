@@ -1,0 +1,22 @@
+# Optional user-supplied plastic derating dataset.
+# Copy to data/user_supplied/plastic_derating.yaml and replace with approved
+# manufacturer/project data before using it for final design.
+materials:
+  PE100_EU:
+    source: "Manufacturer table reference"
+    factors:
+      - temperature_c: 20
+        pressure_factor: 1.00
+      - temperature_c: 30
+        pressure_factor: 0.80
+      - temperature_c: 40
+        pressure_factor: 0.65
+  PPRC_EU:
+    source: "Manufacturer table reference"
+    factors:
+      - temperature_c: 20
+        pressure_factor: 1.00
+      - temperature_c: 50
+        pressure_factor: 0.65
+      - temperature_c: 70
+        pressure_factor: 0.45

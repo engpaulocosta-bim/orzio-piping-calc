@@ -5292,6 +5292,14 @@
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
    'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\__init__.py',
    'PYMODULE'),
+  ('sidct.batch',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\batch\\__init__.py',
+   'PYMODULE'),
+  ('sidct.batch.csv_runner',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\batch\\csv_runner.py',
+   'PYMODULE'),
   ('sidct.catalogs',
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
    'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\catalogs\\__init__.py',
@@ -5315,6 +5323,14 @@
   ('sidct.config',
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
    'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\config.py',
+   'PYMODULE'),
+  ('sidct.data_access',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\data_access\\__init__.py',
+   'PYMODULE'),
+  ('sidct.data_access.external_datasets',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\data_access\\external_datasets.py',
    'PYMODULE'),
   ('sidct.engines',
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
@@ -5368,6 +5384,10 @@
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
    'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\exceptions.py',
    'PYMODULE'),
+  ('sidct.logging_config',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\logging_config.py',
+   'PYMODULE'),
   ('sidct.materials',
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
    'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\materials.py',
@@ -5392,6 +5412,10 @@
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
    'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\reports\\memorial_pdf.py',
    'PYMODULE'),
+  ('sidct.reports.project_pdf',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\reports\\project_pdf.py',
+   'PYMODULE'),
   ('sidct.system_pipe_mapping',
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
    'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\system_pipe_mapping.py',
@@ -5407,6 +5431,30 @@
   ('sidct.ui.form_behavior',
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
    'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\ui\\form_behavior.py',
+   'PYMODULE'),
+  ('sidct.ui.panels',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\ui\\panels\\__init__.py',
+   'PYMODULE'),
+  ('sidct.ui.panels.form_panel',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\ui\\panels\\form_panel.py',
+   'PYMODULE'),
+  ('sidct.ui.panels.project_tree',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\ui\\panels\\project_tree.py',
+   'PYMODULE'),
+  ('sidct.ui.panels.results_panel',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\ui\\panels\\results_panel.py',
+   'PYMODULE'),
+  ('sidct.ui.theme',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\ui\\theme.py',
+   'PYMODULE'),
+  ('sidct.ui.translations',
+   'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '
+   'Lda\\Documentos\\Paulo\\AP\\GitHub\\iss-industrial-piping-dc\\src\\sidct\\ui\\translations.py',
    'PYMODULE'),
   ('sidct.units',
    'D:\\Onedrive\\OneDrive - Tensor - Construção Civil '

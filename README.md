@@ -21,17 +21,20 @@ O SIDCT é uma ferramenta de engenharia séria, construída para engenheiros MEP
 
 ## Perfis Suportados
 
-| ID | Descrição |
-|----|-----------|
-| `glass_factory_industrial_eu` | Fábrica de vidro / utilities industriais (Europa) |
-| `glass_factory_industrial_us` | Fábrica de vidro / utilities industriais (EUA) |
-| `industrial_utilities_eu` | Utilities industriais genéricos (Europa) |
-| `industrial_utilities_brazil` | Utilities industriais (Brasil) |
-| `datacentre_building_services_eu` | Data centre / building services (Europa) |
-| `datacentre_building_services_us` | Data centre / building services (EUA) |
-| `fire_protection_en` | Protecção contra incêndio (EN 12845) |
-| `fire_protection_us` | Protecção contra incêndio (NFPA 13) |
-| `custom` | Perfil personalizado |
+| ID | Descrição | Código Principal |
+|----|-----------|-----------------|
+| `glass_factory_industrial_eu` | Fábrica de vidro / utilities industriais (Europa) | ASME B31.3 / EN 13480 |
+| `glass_factory_industrial_us` | Fábrica de vidro / utilities industriais (EUA) | ASME B31.3 |
+| `industrial_utilities_eu` | Utilities industriais genéricos (Europa) | ASME B31.3 / EN 13480 |
+| `industrial_utilities_brazil` | Utilities industriais (Brasil) | ASME B31.3 |
+| `datacentre_building_services_eu` | Data centre / building services (Europa) | ASME B31.9 / EN 13480 |
+| `datacentre_building_services_us` | Data centre / building services (EUA) | ASME B31.9 |
+| `fire_protection_en` | Protecção contra incêndio (EN 12845) | EN 12845 |
+| `fire_protection_us` | Protecção contra incêndio (NFPA 13) | NFPA 13 |
+| `custom` | Perfil personalizado | Configurável |
+
+Cada perfil define limites de velocidade, critérios de perda de carga, folga de corrosão e envelope
+de projecto (pressão máxima, gama de temperaturas).
 
 ---
 
@@ -49,74 +52,88 @@ O SIDCT é uma ferramenta de engenharia séria, construída para engenheiros MEP
 | `vacuum_utility` | Condutância viscosa + pressão externa (obrigatório) |
 | `sanitary_drainage` | Gravitário (Manning) |
 | `rainwater` | Gravitário (Manning) |
-| `fire_water` | Incompressível com critérios próprios |
+| `fire_water` | Incompressível com critérios próprios (EN 12845 / NFPA 13) |
 
 ---
 
 ## Regimes Físicos Implementados
 
 1. **pressurized_incompressible** — Darcy-Weisbach + Colebrook-White iterativo
-2. **compressible_gas** — Modelo isotérmico, verificação Ma < 0.3 e P2/P1 > 0.5
-3. **gravity_partially_full** — Manning, tubo parcialmente cheio, auto-limpeza
+2. **compressible_gas** — Modelo isotérmico, verificação Ma < 0.3 e ΔP/P < 50%
+3. **gravity_partially_full** — Manning, tubo parcialmente cheio, verificação de auto-limpeza
 4. **vacuum_conductance** — Condutância viscosa + encaminhamento obrigatório para pressão externa
 5. **external_pressure_check** — Windenburg-Trilling; DATASET_MISSING para método ASME rigoroso
-6. **fire_protection_special** — Critérios parametrizados por perfil
+6. **fire_protection_special** — Critérios parametrizados por perfil (EN 12845 / NFPA 13)
 
 ---
 
-## Limitações
+## Materiais e Catálogos Dimensionais
 
-### Técnicas
-- Motor compressível: modelo isotérmico (adequado Ma < 0.3, ΔP/P < 50%)
-- Gás natural: modelado como CH4 quando composição não fornecida (warning emitido obrigatoriamente)
-- Pressão externa/colapso: Windenburg-Trilling (domínio público); para projecto definitivo usar ASME UG-28 ou FEA
-- Suportes: ferramenta preliminar — não substitui análise de flexibilidade e tensões
-- Manning: regime permanente uniforme (sem transições hidráulicas)
+**Materiais suportados:**
+- Aço carbono: A53 GrB, A106 GrB
+- Aço inoxidável: A312 TP304, A312 TP316
+- Liga baixa: A333 Gr6
+- Plásticos: PVC EN 1452 / ASTM D1785, PE EN 12201, PP-R ISO 15874
 
-### Datasets
-- Tensões admissíveis: subset de literatura pública (A106 GrB, A53 GrB, A312 TP304/316, A333 Gr6)
-- Para outros materiais: fornecer ficheiro `/data/user_supplied/stress_<material>.csv`
-- NBR 5580: dataset externo — fornecer `/data/user_supplied/nbr5580_catalog.csv`
-- Charts ASME Fig. G (pressão externa): não implementados — status DATASET_MISSING
+**Catálogos incluídos (YAML, reproduzíveis):**
+- ASME B36.10M — aço carbono (40 DNs)
+- ASME B36.19M — aço inoxidável
+- PVC EN 1452, PVC ASTM D1785, PE EN 12201, PP-R ISO 15874
 
-### Normativas
-- Nenhuma tabela proprietária de norma foi reproduzida neste sistema
-- Fórmulas de dimensionamento são de domínio público (equações publicadas)
-- O utilizador deve verificar com a edição contratual da norma aplicável
+**Templates para fornecimento pelo utilizador:**
+- `data/templates/nbr5580_catalog_template.csv` — catálogo NBR 5580
+- `data/templates/material_stress_template.csv` — tensões admissíveis de outros materiais
 
 ---
 
 ## Instalação
 
 ```bash
-# Clonar repositório
 git clone <repo>
-cd iss-industrial-piping-dc
+cd orzio-piping-calc
 
-# Instalar dependências
 pip install -r requirements.txt
 ```
 
 **Dependências principais:**
 - `pydantic >= 2.5` — validação de modelos
-- `coolprop >= 6.6` — propriedades termodinâmicas
+- `coolprop >= 6.6` — propriedades termodinâmicas (fluidos)
 - `numpy`, `scipy` — cálculo numérico
 - `reportlab >= 4.0` — geração de PDF
-- `streamlit >= 1.30` — interface web
+- `PySide6 >= 6.7` — interface desktop nativa
+- `streamlit >= 1.30` — interface web alternativa
 - `pandas`, `openpyxl` — batch CSV/XLSX
+- `structlog >= 24.1` — logging estruturado
 
 ---
 
 ## Execução
 
-### Interface Web (Streamlit)
+### Interface Desktop (PySide6)
+
 ```bash
 python app.py
-# ou directamente:
+```
+
+Abre a aplicação nativa com arquitectura multi-painel: formulário de entrada, árvore de projecto e
+painel de resultados. Suporta atalhos de teclado (Ctrl+N, Ctrl+S, Ctrl+P) e gravação de projecto
+em JSON para edição posterior.
+
+### Interface Web (Streamlit)
+
+```bash
 streamlit run src/sidct/ui/streamlit_app.py
 ```
 
+### Executável Windows
+
+```bash
+python scripts/build_desktop.py
+# Gera: dist_desktop_adaptive_v7/SIDCT/SIDCT.exe
+```
+
 ### Python API
+
 ```python
 from src.sidct.models import LineInput, FittingItem
 from src.sidct.engines.selector import run_full_calculation
@@ -144,10 +161,11 @@ print(f"Schedule: {ctx.thickness_result.selected_schedule}")
 print(f"Status: {ctx.checker_result.overall_status}")
 
 # Gerar PDF
-pdf = generate_pdf(ctx, "memorial_CA-001.pdf")
+generate_pdf(ctx, "memorial_CA-001.pdf")
 ```
 
 ### Batch CSV
+
 ```python
 from src.sidct.batch.csv_runner import run_batch_from_csv, write_summary_log
 
@@ -157,41 +175,38 @@ write_summary_log(results, errors, "batch_summary.log")
 
 ---
 
+## Exportações
+
+| Formato | Descrição |
+|---------|-----------|
+| PDF | Memorial de cálculo com citações normativas e proveniência de datasets |
+| CSV | Resultados por linha (individual ou batch) |
+| XLSX | Projecto multi-linha formatado |
+| JSON | Estado completo do projecto (round-trip de edição) |
+
+O memorial PDF inclui: dados de entrada, propriedades do fluido, resultados hidráulicos, espessura
+de parede, classificação de suportes, status do verificador, advertências, limitações, citações
+normativas e nota de restrição de uso.
+
+---
+
 ## Datasets — Como Adicionar
 
 ### Material com tensões admissíveis não incluído
 
-1. Copiar template:
-   ```bash
-   cp data/templates/material_stress_template.csv data/user_supplied/stress_<MATERIAL>.csv
-   ```
-2. Preencher com valores do Appendix A da norma aplicável
-3. O sistema detecta automaticamente o ficheiro
+```bash
+cp data/templates/material_stress_template.csv data/user_supplied/stress_<MATERIAL>.csv
+# Preencher com valores do Appendix A da norma aplicável
+# O sistema detecta automaticamente o ficheiro
+```
 
 ### NBR 5580
 
-1. Copiar template:
-   ```bash
-   cp data/templates/nbr5580_catalog_template.csv data/user_supplied/nbr5580_catalog.csv
-   ```
-2. Preencher com dimensões reais da norma
-3. Usar `dimensional_catalog="NBR_5580"` com `project_profile="industrial_utilities_brazil"`
-
----
-
-## Exemplos
-
-Template batch: `data/templates/batch_template.csv`
-
-Casos de teste em `tests/test_integration_cases.py`:
-1. Ar comprimido industrial (300 Nm³/h, 7 barg, 150 m, A106 GrB)
-2. Água de serviço industrial (50 L/s, 10 barg, 80 m, A53 GrB)
-3. Chilled water data centre (120 m³/h, 6 barg, 120 m)
-4. Gás natural industrial (500 Nm³/h, 3 barg, 100 m)
-5. Vácuo utilitário (10 mbar abs, 30 m) — com verificação de pressão externa
-6. Drenagem sanitária (8 L/s, slope 10 mm/m, PVC)
-7. Água pluvial (12 L/s, slope 15 mm/m)
-8. Fire water EN 12845 (30 L/s, 6 barg)
+```bash
+cp data/templates/nbr5580_catalog_template.csv data/user_supplied/nbr5580_catalog.csv
+# Preencher com dimensões reais da norma
+# Usar dimensional_catalog="NBR_5580" com project_profile="industrial_utilities_brazil"
+```
 
 ---
 
@@ -213,12 +228,42 @@ Casos de teste em `tests/test_integration_cases.py`:
 ## Política de Simplificações
 
 Toda simplificação adoptada pelo sistema é:
-- Declarada no campo `assumptions_used` do resultado
-- Registada no log estruturado
-- Incluída explicitamente no PDF (secção "Limitações e Simplificações")
-- Identificada por código (ex: A-HI-001, A-HC-002, A-MAT-001)
+- Declarada no campo `assumptions_used` do resultado;
+- Registada no log estruturado;
+- Incluída explicitamente no PDF (secção "Limitações e Simplificações");
+- Identificada por código (ex: A-HI-001, A-HC-002, A-MAT-001).
 
 Ver [`assumptions.yaml`](assumptions.yaml) para listagem completa.
+
+---
+
+## Limitações
+
+### Técnicas
+- Motor compressível: modelo isotérmico (adequado Ma < 0.3, ΔP/P < 50%)
+- Gás natural: modelado como CH4 quando composição não fornecida (warning emitido obrigatoriamente)
+- Pressão externa/colapso: Windenburg-Trilling (domínio público); para projecto definitivo usar ASME UG-28 ou FEA
+- Suportes: ferramenta preliminar — não substitui análise de flexibilidade e tensões
+- Manning: regime permanente uniforme (sem transições hidráulicas)
+
+### Datasets
+- Tensões admissíveis: subset de literatura pública (A106 GrB, A53 GrB, A312 TP304/316, A333 Gr6)
+- Para outros materiais: fornecer ficheiro `/data/user_supplied/stress_<material>.csv`
+- NBR 5580: dataset externo — fornecer `/data/user_supplied/nbr5580_catalog.csv`
+- Charts ASME Fig. G (pressão externa): não implementados — status DATASET_MISSING
+
+### Normativas
+- Nenhuma tabela proprietária de norma foi reproduzida neste sistema
+- Fórmulas de dimensionamento são de domínio público (equações publicadas)
+- O utilizador deve verificar com a edição contratual da norma aplicável
+
+### Fora de Escopo (intencional)
+- Análise de flexibilidade e tensões (Caesar II / AutoPIPE)
+- Golpe de aríete / hidráulica transitória
+- Análise de expansão térmica
+- Dimensionamento de equipamentos (bombas, compressores)
+- Gestão de P&ID
+- Offshore / subsea (ASME B31.8), nuclear (ASME III), sísmica paramétrica
 
 ---
 
@@ -231,6 +276,22 @@ Ver [`assumptions.yaml`](assumptions.yaml) para listagem completa.
 5. **Fire water** — dimensionamento completo de rede de sprinklers fora de escopo. Apenas verificação de DN e velocidade.
 6. **Nenhuma tabela proprietária de norma foi reproduzida** — todas as equações são de domínio público.
 7. **API 570** — não é usado como código de projecto. Referenciado apenas para contexto de inspecção/integridade.
+
+---
+
+## Exemplos
+
+Template batch: `data/templates/batch_template.csv`
+
+Casos de integração em `tests/test_integration_cases.py`:
+1. Ar comprimido industrial (300 Nm³/h, 7 barg, 150 m, A106 GrB)
+2. Água de serviço industrial (50 L/s, 10 barg, 80 m, A53 GrB)
+3. Chilled water data centre (120 m³/h, 6 barg, 120 m)
+4. Gás natural industrial (500 Nm³/h, 3 barg, 100 m)
+5. Vácuo utilitário (10 mbar abs, 30 m) — com verificação de pressão externa
+6. Drenagem sanitária (8 L/s, slope 10 mm/m, PVC)
+7. Água pluvial (12 L/s, slope 15 mm/m)
+8. Fire water EN 12845 (30 L/s, 6 barg)
 
 ---
 
@@ -247,7 +308,7 @@ python -m pytest tests/test_integration_cases.py -v
 python -m pytest tests/ --cov=src/sidct --cov-report=term-missing
 ```
 
-**Estado actual: 73/73 testes a passar.**
+**Estado actual: 106/106 testes a passar.**
 
 ---
 

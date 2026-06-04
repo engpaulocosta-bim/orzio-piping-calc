@@ -13,6 +13,27 @@ COMPRESSIBLE_SERVICES = {Service.COMPRESSED_AIR, Service.NATURAL_GAS}
 VACUUM_SERVICES = {Service.VACUUM_UTILITY}
 STAINLESS_MATERIALS = {"a312", "a358", "316l", "304l", "316", "304", "tp304", "tp316"}
 CARBON_MATERIALS = {"a106", "a53", "a333", "a335", "a106grb", "a53grb"}
+LIQUID_FLOW_BASES = {"m3/h", "m3/s", "L/s", "gpm"}
+GRAVITY_FLOW_BASES = {"m3/h", "m3/s", "L/s"}
+GAS_FLOW_BASES = {"Nm3/h", "Sm3/h", "m3/h", "kg/s"}
+
+
+def _validate_flow_basis_for_service(inp: LineInput) -> None:
+    if inp.service in (Service.COMPRESSED_AIR.value, Service.NATURAL_GAS.value):
+        allowed = GAS_FLOW_BASES
+        regime = "gases"
+    elif inp.service in (Service.SANITARY_DRAINAGE.value, Service.RAINWATER.value):
+        allowed = GRAVITY_FLOW_BASES
+        regime = "serviços gravitários"
+    else:
+        allowed = LIQUID_FLOW_BASES
+        regime = "líquidos pressurizados"
+    if inp.flow_rate_basis not in allowed:
+        raise ValidationError(
+            f"Unidade de caudal '{inp.flow_rate_basis}' não suportada para {regime}. "
+            f"Use uma destas: {', '.join(sorted(allowed))}.",
+            "flow_rate_basis",
+        )
 
 
 def validate_line_input(inp: LineInput) -> list[str]:
@@ -40,6 +61,7 @@ def validate_line_input(inp: LineInput) -> list[str]:
     # Caudal
     if inp.flow_rate <= 0:
         raise ValidationError("flow_rate deve ser > 0", "flow_rate")
+    _validate_flow_basis_for_service(inp)
 
     # Comprimento
     if inp.line_length_m <= 0:

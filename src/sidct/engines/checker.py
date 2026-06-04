@@ -40,7 +40,8 @@ def run_checker(
     hyd_status = None
     hyd_margin = None
     DN_required = None
-    DN_received = inp.DN_received_mm
+    is_check_mode = inp.operation_mode == "check_received"
+    DN_received = inp.DN_received_mm if is_check_mode else None
 
     if hydraulic is not None:
         DN_required = hydraulic.DN_governing_mm
@@ -51,16 +52,16 @@ def run_checker(
         elif hydraulic.status == "OUT_OF_SCOPE":
             hyd_status = "OUT_OF_SCOPE"
             out_of_scope.append("hydraulic_calculation")
-        elif DN_required is not None and DN_received is not None:
+        elif is_check_mode and DN_required is not None and DN_received is not None:
             hyd_margin = _margin_pct(DN_required, DN_received)
             if hyd_margin >= 0:
                 hyd_status = "APPROVED" if abs(hyd_margin) < 5.0 else "CONSERVATIVE"
             else:
                 hyd_status = "CRITICAL" if abs(hyd_margin) > CRITICAL_DEFICIT_PCT else "INSUFFICIENT"
         else:
-            # Sem DN_received: apenas status calculado
             hyd_status = "CALCULATED" if hydraulic.status == "CALCULATED" else hydraulic.status
-            warnings.append("DN_received não fornecido — verificação hidráulica parcial")
+            if is_check_mode:
+                warnings.append("DN_received não fornecido — verificação hidráulica parcial")
 
         warnings.extend(hydraulic.warnings or [])
 
@@ -70,7 +71,7 @@ def run_checker(
     wall_required = None
     wall_received_mm = None
 
-    if inp.schedule_or_wall_received:
+    if is_check_mode and inp.schedule_or_wall_received:
         # Tentar interpretar como número (mm)
         try:
             wall_received_mm = float(inp.schedule_or_wall_received)
@@ -94,7 +95,7 @@ def run_checker(
         elif thickness.status == "OUT_OF_SCOPE":
             thick_status = "OUT_OF_SCOPE"
             out_of_scope.append("thickness_calculation")
-        elif wall_required is not None and wall_received_mm is not None:
+        elif is_check_mode and wall_required is not None and wall_received_mm is not None:
             thick_margin = _margin_pct(wall_required, wall_received_mm)
             if thick_margin >= 0:
                 thick_status = "APPROVED" if abs(thick_margin) < 5.0 else "CONSERVATIVE"
@@ -102,7 +103,7 @@ def run_checker(
                 thick_status = "CRITICAL" if abs(thick_margin) > CRITICAL_DEFICIT_PCT else "INSUFFICIENT"
         else:
             thick_status = thickness.status
-            if wall_received_mm is None:
+            if is_check_mode and wall_received_mm is None:
                 warnings.append("schedule_or_wall_received não fornecido — verificação de espessura parcial")
 
         warnings.extend(thickness.warnings or [])

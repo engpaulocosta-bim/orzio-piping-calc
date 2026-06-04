@@ -10,7 +10,7 @@ from pathlib import Path
 
 from sidct.batch.csv_runner import _parse_row
 from sidct.enums import DimensionalCatalog, Jurisdiction, ProjectProfile, Service
-from sidct.materials import available_catalogs_for_material, default_catalog_for_material, list_material_specs
+from sidct.materials import available_catalogs_for_material, default_catalog_for_material
 from sidct.models import FittingItem, LineInput
 from sidct.project import Project, create_default_project, load_project, save_project
 from sidct.reports.exports import export_project_csv, export_project_xlsx, export_rows_csv
@@ -40,6 +40,9 @@ SERVICES = [service.value for service in Service]
 PROFILES = [profile.value for profile in ProjectProfile if profile != ProjectProfile.CUSTOM]
 CATALOGS = [catalog.value for catalog in DimensionalCatalog]
 JURISDICTIONS = [jurisdiction.value for jurisdiction in Jurisdiction if jurisdiction != Jurisdiction.CUSTOM]
+LIQUID_FLOW_BASES = ["m3/h", "L/s", "gpm"]
+GRAVITY_FLOW_BASES = ["L/s", "m3/h"]
+GAS_FLOW_BASES = ["Nm3/h", "Sm3/h", "m3/h", "kg/s"]
 
 SHORTCUTS = {
     "new": "Ctrl+N",
@@ -535,7 +538,7 @@ class MainWindow:
         self.group_boxes["flow_geometry"] = form.parentWidget()
         self.flow = _spin(100.0, minimum=0.0001, step=1.0, decimals=3)
         self.flow_basis = QComboBox()
-        self.flow_basis.addItems(["m3/h", "L/s", "gpm", "Nm3/h", "Sm3/h", "kg/s"])
+        self.flow_basis.addItems(LIQUID_FLOW_BASES)
         self.length = _spin(100.0, minimum=0.01, step=1.0, decimals=3)
         self.elevation = _spin(0.0, step=0.5, decimals=3)
         self.slope = _spin(10.0, minimum=0.0, step=1.0, decimals=3)
@@ -551,7 +554,7 @@ class MainWindow:
         self.group_boxes["criteria_received"] = form.parentWidget()
         self.ca = _spin(1.5, minimum=0.0, step=0.5, decimals=3)
         self.dp_allow = _spin(0.5, minimum=0.0, step=0.05, decimals=4)
-        self.dn_received = _spin(100.0, minimum=0.0, step=25.0, decimals=3)
+        self.dn_received = _spin(0.0, minimum=0.0, step=25.0, decimals=3)
         self.schedule_received = QLineEdit("")
         self.elbows = QSpinBox()
         self.elbows.setRange(0, 999)
@@ -575,6 +578,7 @@ class MainWindow:
         layout.addStretch(1)
         self._updating_form = True
         try:
+            self._refresh_flow_basis_options()
             self._refresh_material_options()
             self._apply_form_behavior()
         finally:
@@ -766,8 +770,28 @@ class MainWindow:
         return data if data else self.material.currentText()
 
     def _service_or_region_changed(self) -> None:
+        self._refresh_flow_basis_options()
         self._refresh_material_options()
         self._apply_form_behavior()
+
+    def _flow_basis_options_for_service(self, service: str) -> list[str]:
+        if service in ("compressed_air", "natural_gas"):
+            return GAS_FLOW_BASES
+        if service in ("sanitary_drainage", "rainwater"):
+            return GRAVITY_FLOW_BASES
+        return LIQUID_FLOW_BASES
+
+    def _refresh_flow_basis_options(self, preferred_basis: str | None = None) -> None:
+        if not hasattr(self, "flow_basis"):
+            return
+        current = preferred_basis or self.flow_basis.currentText()
+        options = self._flow_basis_options_for_service(self._selected_service())
+        self.flow_basis.blockSignals(True)
+        self.flow_basis.clear()
+        self.flow_basis.addItems(options)
+        idx = self.flow_basis.findText(current)
+        self.flow_basis.setCurrentIndex(idx if idx >= 0 else 0)
+        self.flow_basis.blockSignals(False)
 
     def _refresh_material_options(self, preferred_material: str | None = None) -> None:
         if not hasattr(self, "material"):
@@ -783,14 +807,7 @@ class MainWindow:
             label = f"{option.display_name} ({option.status})"
             self.material.addItem(label, option.sidct_material)
         if not ready:
-            fallback_materials = get_calculation_ready_materials(service, region)
-            if not fallback_materials:
-                fallback_materials = [
-                    spec.key
-                    for spec in list_material_specs()
-                    if available_catalogs_for_material(spec.key, region)
-                ]
-            for material in fallback_materials:
+            for material in get_calculation_ready_materials(service, region):
                 self.material.addItem(material, material)
         target = -1
         for idx in range(self.material.count()):
@@ -813,6 +830,7 @@ class MainWindow:
         if self.elbows.value() > 0:
             fittings.append(FittingItem(fitting_type="90_LR_ELBOW", quantity=self.elbows.value()))
         service = self._selected_service()
+        mode = self._selected_mode()
         return LineInput(
             project_name=self.project_name.text().strip() or "SIDCT Project",
             line_tag=self.line_tag.text().strip() or "L-001",
@@ -833,12 +851,14 @@ class MainWindow:
             corrosion_allowance_mm=self.ca.value(),
             fittings=fittings,
             allowable_pressure_drop_bar=self.dp_allow.value() or None,
-            DN_received_mm=self.dn_received.value() or None,
-            schedule_or_wall_received=self.schedule_received.text().strip() or None,
+            DN_received_mm=(self.dn_received.value() or None) if mode == "check_received" else None,
+            schedule_or_wall_received=(
+                self.schedule_received.text().strip() or None
+            ) if mode == "check_received" else None,
             slope_mm_m=self.slope.value() if service in ("sanitary_drainage", "rainwater") else None,
             vacuum_target_mbara=self.vacuum.value() if service == "vacuum_utility" else None,
             design_notes=self.notes.toPlainText(),
-            operation_mode=self._selected_mode(),
+            operation_mode=mode,
         )
 
     def _input_to_form(self, inp: LineInput) -> None:
@@ -856,12 +876,12 @@ class MainWindow:
                 (self.profile, inp.project_profile),
                 (self.jurisdiction, inp.jurisdiction),
                 (self.catalog, inp.dimensional_catalog),
-                (self.flow_basis, inp.flow_rate_basis),
             ]:
                 idx = combo.findText(value)
                 if idx >= 0:
                     combo.setCurrentIndex(idx)
             self._refresh_material_options(inp.material)
+            self._refresh_flow_basis_options(inp.flow_rate_basis)
             self.P_oper.setValue(inp.P_oper_bar)
             self.T_oper.setValue(inp.T_oper_c)
             self.P_design.setValue(inp.P_design_bar)

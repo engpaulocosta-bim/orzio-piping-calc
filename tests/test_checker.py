@@ -55,7 +55,11 @@ def test_checker_vacuum_without_ext_check_is_critical():
     assert "external_pressure_check_not_performed" in " ".join(res.dataset_missing_items)
 
 def test_checker_approved_when_received_larger():
-    inp = _base_inp(extra={"DN_received_mm": 200.0, "schedule_or_wall_received": "8.18"})
+    inp = _base_inp(extra={
+        "operation_mode": "check_received",
+        "DN_received_mm": 200.0,
+        "schedule_or_wall_received": "8.18",
+    })
     hr = HydraulicResult(
         regime="pressurized_incompressible", service="service_water",
         line_tag="TC-001", DN_governing_mm=150.0, status="CALCULATED"
@@ -68,13 +72,33 @@ def test_checker_approved_when_received_larger():
     assert res.overall_status in ("APPROVED", "CONSERVATIVE")
 
 def test_checker_insufficient_when_received_smaller():
-    inp = _base_inp(extra={"DN_received_mm": 50.0, "schedule_or_wall_received": "3.91"})
+    inp = _base_inp(extra={
+        "operation_mode": "check_received",
+        "DN_received_mm": 50.0,
+        "schedule_or_wall_received": "3.91",
+    })
     hr = HydraulicResult(
         regime="pressurized_incompressible", service="service_water",
         line_tag="TC-001", DN_governing_mm=200.0, status="CALCULATED"
     )
     res = run_checker(inp, hr, None, None)
     assert res.overall_status in ("INSUFFICIENT", "CRITICAL")
+
+
+def test_checker_calculate_new_ignores_accidental_received_fields():
+    inp = _base_inp(extra={"DN_received_mm": 50.0, "schedule_or_wall_received": "3.91"})
+    hr = HydraulicResult(
+        regime="pressurized_incompressible", service="service_water",
+        line_tag="TC-001", DN_governing_mm=200.0, status="CALCULATED"
+    )
+    tr = ThicknessResult(
+        line_tag="TC-001", design_code="ASME_B31_3", material="A106 GrB",
+        t_after_mill_tolerance_mm=8.0, status="CALCULATED"
+    )
+    res = run_checker(inp, hr, tr, None)
+    assert res.overall_status == "CALCULATED"
+    assert res.DN_received_mm is None
+    assert res.wall_received_mm is None
 
 def test_checker_never_approves_with_dataset_missing():
     inp = _base_inp()
@@ -124,6 +148,12 @@ def test_full_calculation_chilled_water():
     ctx = run_full_calculation(inp)
     assert ctx.hydraulic_result is not None
     assert ctx.hydraulic_result.status in ("CALCULATED", "WARNING")
+
+
+def test_full_calculation_rejects_invalid_flow_basis_for_service():
+    inp = _base_inp(extra={"flow_rate_basis": "kg/s"})
+    with pytest.raises(Exception, match="Unidade de caudal 'kg/s'"):
+        run_full_calculation(inp)
 
 def test_full_calculation_gravity_drainage():
     inp = LineInput(

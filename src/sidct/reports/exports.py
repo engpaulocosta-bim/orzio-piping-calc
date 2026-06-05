@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 from pathlib import Path
 from typing import Iterable
@@ -285,3 +286,103 @@ def export_project_xlsx(project: Project, path: str | Path) -> None:
     style_sheet(ws_warnings, widths_max=60)
 
     wb.save(path)
+
+
+def export_context_xlsx(ctx: ReportContext, output_path: str | Path | None = None) -> bytes:
+    """Export a single calculation context to XLSX and return the workbook bytes."""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Alignment, Font, PatternFill
+        from openpyxl.utils import get_column_letter
+    except ImportError as exc:
+        raise ImportError("openpyxl is required for XLSX export") from exc
+
+    def style_sheet(ws, widths_max: int = 34) -> None:
+        header_fill = PatternFill("solid", fgColor="24455F")
+        header_font = Font(color="FFFFFF", bold=True)
+        for cell in ws[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        for row in ws.iter_rows(min_row=2):
+            for cell in row:
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
+        ws.freeze_panes = "A2"
+        ws.auto_filter.ref = ws.dimensions
+        for column_cells in ws.columns:
+            letter = get_column_letter(column_cells[0].column)
+            max_len = max(len(str(cell.value)) if cell.value is not None else 0 for cell in column_cells)
+            ws.column_dimensions[letter].width = min(max(max_len + 2, 12), widths_max)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "SIDCT Result"
+    row = context_to_row(ctx)
+    ws.append([RESULT_LABELS.get(field, field) for field in RESULT_FIELDS])
+    formatted = format_export_row(row, RESULT_FIELDS)
+    ws.append([formatted.get(field) for field in RESULT_FIELDS])
+    style_sheet(ws)
+
+    ws_inputs = wb.create_sheet("Line Input")
+    input_fields = [
+        "project_name", "line_tag", "service", "project_profile", "jurisdiction",
+        "fluid_name", "P_oper_bar", "T_oper_c", "P_design_bar", "T_design_c",
+        "flow_rate", "flow_rate_basis", "line_length_m", "elevation_delta_m",
+        "material", "dimensional_catalog", "design_code", "corrosion_allowance_mm",
+        "allowable_pressure_drop_bar", "required_residual_pressure_bar", "DN_received_mm",
+        "schedule_or_wall_received", "slope_mm_m", "vacuum_target_mbara",
+        "operation_mode", "design_notes",
+    ]
+    ws_inputs.append([RESULT_LABELS.get(field, field.replace("_", " ").title()) for field in input_fields])
+    if ctx.line_input is not None:
+        input_values = ctx.line_input.model_dump()
+        ws_inputs.append([format_export_value(field, input_values.get(field)) for field in input_fields])
+    style_sheet(ws_inputs)
+
+    ws_warnings = wb.create_sheet("Warnings")
+    ws_warnings.append(["Line Tag", "Status", "Warnings", "Dataset Missing", "Out Of Scope"])
+    checker = ctx.checker_result
+    ws_warnings.append([
+        ctx.line_tag,
+        checker.overall_status if checker else "CALCULATED",
+        _context_warnings(ctx) or "No warnings recorded.",
+        _join(checker.dataset_missing_items if checker else []),
+        _join(checker.out_of_scope_items if checker else []),
+    ])
+    style_sheet(ws_warnings, widths_max=60)
+
+    ws_audit = wb.create_sheet("Audit")
+    audit = (ctx.dataset_provenance or {}).get("audit", {})
+    ws_audit.append(["Field", "Value"])
+    for field, value in [
+        ("calculated_at", audit.get("calculated_at", "")),
+        ("project_updated_at", audit.get("project_updated_at", "")),
+        ("schema_version", audit.get("schema_version", "")),
+        ("service", audit.get("service", "")),
+        ("catalog", audit.get("catalog", "")),
+    ]:
+        ws_audit.append([field, format_export_value(field, value)])
+    style_sheet(ws_audit, widths_max=44)
+
+    ws_citations = wb.create_sheet("Citations")
+    ws_citations.append(["Standard", "Edition", "Clause", "Description"])
+    if ctx.citations:
+        for citation in ctx.citations:
+            ws_citations.append([
+                citation.standard_id,
+                citation.edition,
+                citation.clause,
+                citation.description,
+            ])
+    else:
+        ws_citations.append(["N/A", "N/A", "N/A", "No normative citations recorded."])
+    style_sheet(ws_citations, widths_max=50)
+
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    xlsx_bytes = buffer.getvalue()
+
+    if output_path:
+        Path(output_path).write_bytes(xlsx_bytes)
+
+    return xlsx_bytes

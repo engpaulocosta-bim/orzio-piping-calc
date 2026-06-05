@@ -1,6 +1,9 @@
 """SIDCT — Streamlit Application."""
 from __future__ import annotations
 import datetime
+import os
+import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -48,6 +51,8 @@ st.divider()
 GRAVITY_SERVICES     = {"sanitary_drainage", "rainwater"}
 COMPRESSIBLE_SERVICES = {"compressed_air", "natural_gas"}
 VACUUM_SERVICES      = {"vacuum_utility"}
+IS_DESKTOP_EMBEDDED = os.environ.get("SIDCT_DESKTOP_EMBEDDED") == "1" or getattr(sys, "frozen", False)
+LAST_EXPORT_PATH_KEY = "sidct_last_export_path"
 
 _STATUS_CSS = {
     "APPROVED":        "status-pass",
@@ -63,6 +68,52 @@ _STATUS_CSS = {
 def _status_badge(status: str) -> str:
     css = _STATUS_CSS.get(status, "status-info")
     return f'<span class="{css}">{status}</span>'
+
+
+def _safe_filename_part(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", value.strip())
+    return cleaned.strip("._") or "sidct"
+
+
+def _desktop_export_dir() -> Path:
+    candidates = [Path.home() / "Downloads", Path.home() / "Documents", Path.home()]
+    base_dir = next((candidate for candidate in candidates if candidate.exists()), candidates[0])
+    export_dir = base_dir / "SIDCT_Exports"
+    export_dir.mkdir(parents=True, exist_ok=True)
+    return export_dir
+
+
+def _save_desktop_export(data: bytes, filename: str) -> Path:
+    export_path = _desktop_export_dir() / filename
+    export_path.write_bytes(data)
+    st.session_state[LAST_EXPORT_PATH_KEY] = str(export_path)
+    return export_path
+
+
+def _open_desktop_export_dir() -> None:
+    export_dir = _desktop_export_dir()
+    if hasattr(os, "startfile"):
+        os.startfile(str(export_dir))
+        return
+    if sys.platform == "darwin":
+        subprocess.Popen(["open", str(export_dir)])
+        return
+    subprocess.Popen(["xdg-open", str(export_dir)])
+
+
+def _render_export_button(label: str, data: bytes, filename: str, mime: str, key: str) -> None:
+    if IS_DESKTOP_EMBEDDED:
+        if st.button(label, key=key, use_container_width=True):
+            _save_desktop_export(data, filename)
+        return
+    st.download_button(
+        label,
+        data=data,
+        file_name=filename,
+        mime=mime,
+        key=key,
+        use_container_width=True,
+    )
 
 # ════════════════════════════════════════════════════════════════════════════════
 # SIDEBAR — entradas
@@ -445,43 +496,69 @@ foi reproduzida neste sistema.
         # ── Exportar ───────────────────────────────────────────────────────────
         st.divider()
         st.subheader("Exportar memorial")
-        col_e1, col_e2 = st.columns(2)
+        if IS_DESKTOP_EMBEDDED:
+            st.caption(f"No executavel desktop, os ficheiros sao gravados em `{_desktop_export_dir()}`.")
+        col_e1, col_e2, col_e3 = st.columns(3)
+        exports_ready = False
+        xlsx_bytes = b""
+        xlsx_name = ""
+        csv_name = ""
 
         with col_e1:
             try:
+                from sidct.reports.exports import export_context_xlsx
                 from sidct.reports.memorial_pdf import generate_pdf
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                line_slug = _safe_filename_part(line_tag)
+                pdf_name = f"sidct_{line_slug}_{timestamp}.pdf"
+                xlsx_name = f"sidct_{line_slug}_{timestamp}.xlsx"
+                csv_name = f"sidct_{line_slug}_{timestamp}.csv"
                 pdf_bytes = generate_pdf(ctx)
-                st.download_button(
-                    "📄 Download PDF",
-                    data=pdf_bytes,
-                    file_name=f"sidct_{line_tag}_{datetime.date.today()}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True,
-                )
+                xlsx_bytes = export_context_xlsx(ctx)
+                exports_ready = True
+                _render_export_button("Guardar PDF", pdf_bytes, pdf_name, "application/pdf", "export_pdf")
             except Exception as e:
-                st.error(f"Erro ao gerar PDF: {e}")
+                st.error(f"Erro ao preparar exportacoes: {e}")
 
         with col_e2:
-            import csv, io as sio
-            buf = sio.StringIO()
-            w = csv.writer(buf)
-            w.writerow(["Campo", "Valor"])
-            if hr:
-                w.writerow(["DN_governing_mm", hr.DN_governing_mm])
-                w.writerow(["velocity_ms", hr.velocity_ms])
-                w.writerow(["dp_total_bar", hr.dp_total_bar])
-            if tr:
-                w.writerow(["t_required_mm", tr.t_after_mill_tolerance_mm])
-                w.writerow(["selected_schedule", tr.selected_schedule])
-            if cr:
-                w.writerow(["overall_status", cr.overall_status])
-            st.download_button(
-                "📋 Download CSV",
-                data=buf.getvalue().encode("utf-8"),
-                file_name=f"sidct_{line_tag}_{datetime.date.today()}.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
+            if exports_ready:
+                _render_export_button(
+                    "Guardar Excel (XLSX)",
+                    xlsx_bytes,
+                    xlsx_name,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    "export_xlsx",
+                )
+
+        with col_e3:
+            if exports_ready:
+                import csv, io as sio
+                buf = sio.StringIO()
+                w = csv.writer(buf)
+                w.writerow(["Campo", "Valor"])
+                if hr:
+                    w.writerow(["DN_governing_mm", hr.DN_governing_mm])
+                    w.writerow(["velocity_ms", hr.velocity_ms])
+                    w.writerow(["dp_total_bar", hr.dp_total_bar])
+                if tr:
+                    w.writerow(["t_required_mm", tr.t_after_mill_tolerance_mm])
+                    w.writerow(["selected_schedule", tr.selected_schedule])
+                if cr:
+                    w.writerow(["overall_status", cr.overall_status])
+                _render_export_button(
+                    "Guardar CSV",
+                    buf.getvalue().encode("utf-8"),
+                    csv_name,
+                    "text/csv",
+                    "export_csv",
+                )
+
+        if IS_DESKTOP_EMBEDDED:
+            if st.button("Abrir pasta de exportacao", key="open_export_dir", use_container_width=True):
+                _open_desktop_export_dir()
+            last_export_path = st.session_state.get(LAST_EXPORT_PATH_KEY)
+            if last_export_path:
+                st.success(f"Ficheiro guardado em: {last_export_path}")
 
     # ── Estado inicial — guia de uso ───────────────────────────────────────────
     else:

@@ -11,7 +11,7 @@ from sidct.engines.selector import run_full_calculation
 from sidct.materials import validate_material_application
 from sidct.models import LineInput
 from sidct.project import create_default_project, load_project, save_project
-from sidct.reports.exports import export_project_csv, export_project_xlsx
+from sidct.reports.exports import export_context_xlsx, export_project_csv, export_project_xlsx
 from sidct.reports.memorial_pdf import generate_pdf
 from sidct.reports.project_pdf import generate_project_pdf
 
@@ -124,13 +124,16 @@ def test_project_exports_and_pdf(tmp_path):
 
     csv_path = tmp_path / "results.csv"
     xlsx_path = tmp_path / "results.xlsx"
+    single_xlsx_path = tmp_path / "result_single.xlsx"
     pdf_path = tmp_path / "line.pdf"
     export_project_csv(project, csv_path)
     export_project_xlsx(project, xlsx_path)
+    export_context_xlsx(ctx, single_xlsx_path)
     generate_pdf(ctx, pdf_path)
 
     assert csv_path.exists() and csv_path.read_text(encoding="utf-8").startswith("project_name")
     assert xlsx_path.exists() and xlsx_path.stat().st_size > 0
+    assert single_xlsx_path.exists() and single_xlsx_path.stat().st_size > 0
     assert pdf_path.exists() and pdf_path.stat().st_size > 0
 
     from openpyxl import load_workbook
@@ -144,6 +147,9 @@ def test_project_exports_and_pdf(tmp_path):
     assert isinstance(values[headers.index("Velocity [m/s]")], str)
     assert len(values[headers.index("Velocity [m/s]")].split(".")[-1]) <= 3
     assert result_sheet.freeze_panes == "A2"
+
+    single_wb = load_workbook(single_xlsx_path)
+    assert {"SIDCT Result", "Line Input", "Warnings", "Audit", "Citations"}.issubset(set(single_wb.sheetnames))
 
 
 def test_gravity_exports_include_drainage_specific_results(tmp_path):

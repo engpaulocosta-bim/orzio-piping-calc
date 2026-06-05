@@ -65,6 +65,7 @@ def _configure_environment() -> None:
         + os.pathsep
         + os.environ.get("PYTHONPATH", "")
     )
+    os.environ.setdefault("SIDCT_DESKTOP_EMBEDDED", "1")
     os.environ.setdefault("STREAMLIT_BROWSER_GATHER_USAGE_STATS", "false")
     os.environ.setdefault("STREAMLIT_SERVER_HEADLESS", "true")
     os.environ.setdefault("STREAMLIT_SERVER_FILE_WATCHER_TYPE", "none")
